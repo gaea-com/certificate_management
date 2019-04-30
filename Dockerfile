@@ -39,7 +39,7 @@ RUN set -ex \
         tk-dev \
         tcl-dev \
         \
-    && pip3 install --no-cache-dir -r requirements.txt -i https://pypi.douban.com/simple \
+    && pip3 install --no-cache-dir -r requirements.txt \
     && pip3 install gunicorn \
     && rm -rf /var/cache/apk/* \
 	&& apk del .build-deps
