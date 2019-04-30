@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: domain-cert
+  namespace: domain-cert
+spec:
+  selector:
+    cert-app: cert-deployment
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: domain-cert
+  namespace: domain-cert
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cert-app: cert-deployment
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        cert-app: cert-deployment
+    spec:
+      containers:
+        - name: domain-cert
+          image: ""
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: DB_NAME
+              value: ""
+            - name: DB_USER
+              value: root
+            - name: DB_PASSWORD
+              value: ""
+            - name: DB_HOST
+              value: mysql57
+            - name: ADMINS_EMAIL
+              value: ""
+            - name: EMAIL_PASSWORD
+              value: ""
+            - name: EMAIL_HOST
+              value: ""
+            - name: EMAIL_PORT
+              value: ""
+            - name: EMAIL_SSL
+              value: ""
+            - name: STAGING   # True: 使用测试模式创建证书， False关闭测试模式（用于部署正式环境）。
+              value: "False"
+            - name: DJANGO_DEBUG  # True: 打开django DEBUG模式;  False: 关闭django DEBUG模式（用于部署正式环境）。
+              value: "False"
+            - name: LOG_HANDLERS
+              value: info
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: static-dir
+              mountPath: /data/web/collect_static
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1000Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+
+        - name: nginx
+          image: nginx:alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          workingDir: /etc/nginx/
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: static-dir
+              mountPath: /data/web/collect_static
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+      volumes:
+        - name: static-dir
+          emptyDir: {}
+        - name: nginx-config
+          emptyDir: {}
+

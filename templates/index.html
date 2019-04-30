@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% load time_tags %}
+
+{% block ext_css %}
+    <link rel="stylesheet" href="{% static 'extends/css/waitMe.css' %}">
+    <link rel="stylesheet" href="{% static 'extends/css/toastr.min.css' %}">
+{% endblock %}
+
+{% block content_wrapper %}
+    <div class="content-wrapper">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">域名列表</h4>
+                <div class="row">
+                    <div class="col-12 table-responsive">
+                        <table id="order-listing" class="table">
+                            <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>域名</th>
+                                <th>开始时间</th>
+                                <th>过期时间</th>
+                                <th>剩余天数</th>
+                                <th>DNS解析商</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in messages %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ item.domain }}</td>
+                                    <td>{{ item.start_time | date:"Y-m-d" }}</td>
+                                    {#class expired_time 给updateSSLCert函数使用#}
+                                    <td>{{ item.end_time | date:"Y-m-d" }}</td>
+                                    <td>{% remaining_days item.end_time|date:'Y-m-d H:i:s' %}</td>
+                                    <td>{{ item.dns_company }}</td>
+
+                                    {#id status_{{ forloop.counter }} 用于check_domain_status函数#}
+                                    <td class="status"
+                                        id="status_{{ forloop.counter }}">{{ item.get_status_display }}</td>
+                                    <td id="operate_{{ forloop.counter }}">
+                                        <button class="btn btn-outline-primary"
+                                                onclick="view_cert('{{ item.id }}', '{{ item.domain }}')">证书
+                                        </button>
+                                        <div class="btn-group">
+                                            <button type="button"
+                                                    class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                                    data-toggle="dropdown" aria-haspopup="true"
+                                                    aria-expanded="false">
+                                                <span class="sr-only">Toggle Dropdown</span>
+                                            </button>
+                                            <div class="dropdown-menu" style="min-width: 100%;">
+                                                <a class="dropdown-item" href="javascript:void(0)"
+                                                   onclick="updateSSLCert('{{ forloop.counter }}', '{{ item.id }}', '{{ item.domain }}');">更新</a>
+
+                                                <a class="dropdown-item" href="javascript:void(0)"
+                                                   onclick="disableSSLCert('{{ forloop.counter }}', '{{ item.id }}', '{{ item.domain }}');">停用</a>
+
+                                                <a class="dropdown-item" href="javascript:void(0)"
+                                                   onclick="domainDelete('{{ item.id }}', '{{ item.domain }}');">删除</a>
+
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item" href="javascript:void(0)"
+                                                   onclick="view_email('{{ item.id }}'); return false">修改抄送邮箱</a>
+                                                <a class="dropdown-item" href="javascript:void(0)"
+                                                   onclick="dns_info('{{ item.domain }}'); return false">添加解析记录</a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                No data
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- content-wrapper ends -->
+    {% include "pages/modals/email_modals.html" %}
+{% endblock %}
+
+{% block ext_js %}
+    <script src="{% static 'extends/js/data-table-for-index.js' %}"></script>
+    <script src="{% static 'extends/js/waitMe.js' %}"></script>
+    <script src="{% static 'extends/js/toastr.min.js' %}"></script>
+    <script src="{% static 'extends/js/operate.js' %}"></script>
+{% endblock %}
+

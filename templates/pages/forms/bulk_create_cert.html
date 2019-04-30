@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block ext_css %}
+    <link rel="stylesheet" href="{% static 'extends/css/toastr.min.css' %}">
+    <link rel="stylesheet" href="{% static 'extends/css/waitMe.css' %}">
+
+    <style>
+        textarea::-webkit-input-placeholder {
+            /* placeholder颜色  */
+            color: #aab2bd;
+            /* placeholder字体大小  */
+            font-size: 16px;
+        }
+
+        p {
+            margin: 0px;
+        }
+    </style>
+
+{% endblock %}
+
+
+{% block content_wrapper %}
+    <div class="content-wrapper">
+        <div class="row grid-margin">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">批量创建证书</h4>
+                        <form method="post" action="#">{% csrf_token %}
+                            <div class="form-group">
+                                <div class="alert alert-primary" role="alert">
+                                    <p>格式:</p>
+                                    <p>&nbsp;&nbsp;&nbsp;&nbsp;域名,DNS解析商,API_ID,API_TOKEN,to_email(接收邮箱),
+                                        cc_email(抄送邮箱，选填)</p>
+                                    <br>
+                                    <p>例:</p>
+                                    <p>&nbsp;&nbsp;&nbsp;&nbsp;aaa.com,dnspod,API_ID,API_TOKEN,test1@163.com,test2@163.com</p>
+                                    <br>
+                                    <p style="color: red">Ps: 一个域名一行，一次最多100行</p>
+                                </div>
+                                <textarea placeholder="aaa.com,dnspod,API_ID,API_TOKEN,test@gaea.com,test1@163.com"
+                                          id="bulkMessages" class="form-control" required rows="20"
+                                          spellcheck="false"></textarea>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary" onclick="bulkCreateSLLCert()">提交
+                            </button>
+                            <button type="reset" class="btn btn-outline-primary">重置</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block ext_js %}
+    <script src="{% static 'extends/js/bulk-create-ssl-cert.js' %}"></script>
+    <script src="{% static 'extends/js/toastr.min.js' %}"></script>
+    <script src="{% static 'extends/js/waitMe.js' %}"></script>
+
+    <script>
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+    </script>
+{% endblock %}
+
+
