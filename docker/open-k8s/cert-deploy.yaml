@@ -9,6 +9,7 @@ spec:
   ports:
     - port: 80
       targetPort: 80
+      nodePort: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,8 +29,8 @@ spec:
         cert-app: cert-deployment
     spec:
       containers:
-        - name: domain-cert
-          image: ""
+        - name: web
+          image: zzfeng2012/ssl-cert:tagname:v0.0.1
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -42,7 +43,9 @@ spec:
             - name: DB_PASSWORD
               value: ""
             - name: DB_HOST
-              value: mysql57
+              value: ""
+            - name: DB_PORT
+              value: "3306"
             - name: ADMINS_EMAIL
               value: ""
             - name: EMAIL_PASSWORD
@@ -52,8 +55,8 @@ spec:
             - name: EMAIL_PORT
               value: ""
             - name: EMAIL_SSL
-              value: ""
-            - name: STAGING   # True: 使用测试模式创建证书， False关闭测试模式（用于部署正式环境）。
+              value: "True"
+            - name: STAGING   # True: 使用测试模式创建证书; False: 关闭测试模式（用于部署正式环境）。
               value: "False"
             - name: DJANGO_DEBUG  # True: 打开django DEBUG模式;  False: 关闭django DEBUG模式（用于部署正式环境）。
               value: "False"
@@ -74,7 +77,7 @@ spec:
 
         - name: nginx
           image: nginx:alpine
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
               protocol: TCP
@@ -91,6 +94,13 @@ spec:
               port: 80
             initialDelaySeconds: 30
             timeoutSeconds: 30
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
       volumes:
         - name: static-dir
           emptyDir: {}
