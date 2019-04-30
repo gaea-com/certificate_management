@@ -177,7 +177,6 @@ MANAGERS = ADMINS
 EMAIL_USE_SSL = True if os.environ.get("EMAIL_SSL", "True") == "True" else False
 # EMAIL_HOST = "smtp.exmail.qq.com"
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
-# EMAIL_PORT = 465
 EMAIL_PORT = os.environ.get("EMAIL_PORT", 465)
 EMAIL_HOST_USER = os.environ.get("ADMINS_EMAIL", "admin@admin.com")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_PASSWORD")
