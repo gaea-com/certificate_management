@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: zzfeng2012/ssl-cert:tagname:v0.0.1
+          image: zzfeng2012/ssl-cert:v0.0.1
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
