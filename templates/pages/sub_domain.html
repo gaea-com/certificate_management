@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block content_wrapper %}
+    <div class="content-wrapper">
+        <div class="row">
+            <div class="col-12 grid-margin">
+                <div class="card">
+                    <div class="row">
+                        <div class="col-md-12 grid-margin grid-margin-md-0 stretch-card">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h4 class="card-title">域名</h4>
+                                    <div class="form-group">
+                                        <select class="js-example-basic-single w-100" id="selectSubDomain"
+                                                onchange="selectSubDomainPage()" style="width: 40%">
+                                            <option value="0" selected="selected">请选择</option>
+                                            {% for item in domains %}
+                                                <option value="{{ item.id }}">{{ item.domain }}</option>
+                                            {% empty %}
+                                                <option value="None">None</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-12 grid-margin stretch-card">
+                <div class="card">
+                    <div class="card-body">
+{#                        <h4 class="card-title">子域名列表</h4>#}
+                        <h6 class="page-description" style="color: black"></h6>
+                        <div class="row">
+                            <div class="table-sorter-wrapper col-lg-12 table-responsive">
+                                <table id="sortable-table-1" class="table table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th class="sortStyle">协议<i class="icon-arrow-down"></i></th>
+                                        <th class="sortStyle">子域名<i class="icon-arrow-down"></i></th>
+                                        <th class="sortStyle">记录类型<i class="icon-arrow-down"></i></th>
+                                        <th class="sortStyle">记录值<i class="icon-arrow-down"></i></th>
+                                        <th class="sortStyle">开始时间<i class="icon-arrow-down"></i></th>
+                                        <th class="sortStyle">过期时间<i class="icon-arrow-down"></i></th>
+                                        <th class="sortStyle">剩余天数<i class="icon-arrow-down"></i></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+{#                                    <tr>#}
+{#                                        <td>https</td>#}
+{#                                        <td>Herman Beck</td>#}
+{#                                        <td>John</td>#}
+{#                                        <td>Photoshop</td>#}
+{#                                        <td>$456.00</td>#}
+{#                                        <td>12 May 2017</td>#}
+{#                                        <td>12 May 2017</td>#}
+{#                                    </tr>#}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block ext_js %}
+    <script src="{% static 'download_templates/js/select2.js' %}"></script>
+    <script src="{% static 'download_templates/js/jq.tablesort.js' %}"></script>
+    <script src="{% static 'download_templates/js/tablesorter.js' %}"></script>
+    <script src="{% static 'extends/js/sub_domain.js' %}"></script>
+{% endblock %}

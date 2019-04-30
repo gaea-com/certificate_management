@@ -1,0 +1,64 @@
+version: "3"
+
+services:
+  nginx:
+    image: nginx:1.15.11-alpine
+#    container_name: nginx1.15
+    working_dir: /data/web
+    expose:
+      - "80"
+    ports:
+      - "80:80"
+#    links:
+#      - web
+    depends_on:
+      - web
+    networks:
+      - backend
+    volumes:
+      - code:/data/web
+      - nginx-conf:/etc/nginx/conf.d
+    command:
+      - /bin/sh
+      - -c
+      - |
+        sed -i 's/#gzip  on.*/gzip  on;/g' /etc/nginx/nginx.conf
+        sed -i '/gzip  on.*/a\    gzip_comp_level 6;' /etc/nginx/nginx.conf
+        sed -i '/gzip_comp_level.*/a\    gzip_http_version 1.1;' /etc/nginx/nginx.conf
+        sed -i '/gzip_comp_level.*/a\    gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;' /etc/nginx/nginx.conf
+        nginx -g 'daemon off;'
+  web:
+    image: harbor.gaeamobile-inc.net/ssl-cert/ssl-cert:v0.0.1
+#    container_name: web
+    environment:
+      - DB_NAME=ssl_cert            # 数据库名称
+      - DB_USER=root            # 数据库账号
+      - DB_PASSWORD=ssl_cert        # 数据库密码
+      - DB_HOST=10.0.52.45            # 数据库地址
+      - DB_PORT=3306            # 数据库端口
+      - ADMINS_EMAIL=zhenfeng.zhao@gaea.com       # 管理员邮箱
+      - EMAIL_PASSWORD=awaiT321     # 管理员邮箱密码
+      - EMAIL_HOST=smtp.exmail.qq.com         # 发送邮件服务器
+      - EMAIL_PORT=465         # 邮箱服务器端口号
+      - EMAIL_SSL=True          # 邮箱是否开启加密, True|False (默认为True)
+      - STAGING=False         # True: 使用测试模式创建证书， False: 关闭测试模式（用于线上正式环境）。
+      - DJANGO_DEBUG=False    # 关闭或打开django DEBUG模式
+      - LOG_HANDLERS=info     # 日志级别
+    volumes:
+      - code:/data/web
+      - nginx-conf:/etc/nginx/conf.d
+    expose:
+      - "8000"
+    networks:
+      - backend
+    command:
+      - /bin/sh
+      - -c
+      - |
+        /data/web/scripts/sh/run_web.sh
+networks:
+  backend:
+volumes:
+  code:
+  nginx-conf:
+

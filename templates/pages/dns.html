@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block ext_css %}
+    <link rel="stylesheet" href="{% static 'extends/css/waitMe.css' %}">
+    <style type="text/css">
+        {#让table中的td文字只显示部分#}
+        table {
+            table-layout: fixed;
+        }
+
+        td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+{% endblock %}
+
+{% block content_wrapper %}
+    <div class="content-wrapper">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">
+                    <button type="button" class="btn btn-outline-primary btn-rounded btn-fw"
+                            onclick="show_modal(); return false">添加记录
+                    </button>
+                </h4>
+                <p class="card-description">
+                    <span id="dns_company">{{ dns_company }}</span>
+                    :
+                    <span id="top_domain">{{ top_domain }}</span>
+                </p>
+                <div class="row">
+                    <div class="col-12 table-responsive">
+                        <table id="order-listing" class="table" style="table-layout:fixed">
+                            <thead>
+                            <tr>
+                                <th>主机记录</th>
+                                <th>记录类型</th>
+                                <th>解析线路</th>
+                                <th>记录值</th>
+                                <th>TTL（秒）</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in data %}
+                                <tr>
+                                    <td title="{{ item.name }}">{{ item.name }}</td>
+                                    <td>{{ item.type }}</td>
+                                    <td>{{ item.line | default:'None' }}</td>
+                                    <td title="{{ item.value }}">{{ item.value }}</td>
+                                    <td>{{ item.ttl }}</td>
+                                    <td>
+                                        {#                                        {% if item.status == "enabled" %}#}
+                                        {#                                            正常#}
+                                        {#                                        {% elif item.status == "ENABLE" %}#}
+                                        {#                                            正常#}
+                                        {#                                        {% else %}#}
+                                        {{ item.status }}
+                                        {#                                        {% endif %}#}
+                                    </td>
+                                    <td>
+                                        <a href="#" onclick="show_modify_modal(this)">修改</a> |
+                                        <a href="#" onclick="delete_record(this)">删除</a>
+                                        {% ifnotequal dns_company|lower "cloudflare" %}
+                                            {% ifequal item.status "正常" %}
+                                                | <a href="#" onclick="set_record_status(this)">暂停</a>
+                                            {% else %}
+                                                | <a href="#" onclick="set_record_status(this)">启用</a>
+                                            {% endifequal %}
+                                        {% endifnotequal %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- content-wrapper ends -->
+
+    {% include "pages/modals/add_record_modals.html" %}
+{% endblock %}
+
+{% block ext_js %}
+    <script src="{% static 'extends/js/data-table-for-dns.js' %}"></script>
+    <script src="{% static 'extends/js/dns.js' %}"></script>
+    <script src="{% static 'extends/js/waitMe.js' %}"></script>
+
+    <script>
+        {#去掉<a>标签下划线#}
+        $("a").css("text-decoration", "none");
+
+        $("#order-listing_filter label input").attr("placeholder", "搜索")
+    </script>
+{% endblock %}

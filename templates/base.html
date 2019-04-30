@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    {% block title %}
+        <title>SSL证书管理</title>
+    {% endblock %}
+
+    {% load static %}
+
+    <link rel="stylesheet"
+          href="{% static 'download_templates/vendors/iconfonts/simple-line-icon/css/simple-line-icons.css' %}">
+    <link rel="stylesheet"
+          href="{% static 'download_templates/vendors/iconfonts/flag-icon-css/css/flag-icon.min.css' %}">
+    <link rel="stylesheet" href="{% static 'download_templates/vendors/css/vendor.bundle.base.css' %}">
+    <link rel="stylesheet" href="{% static 'download_templates/vendors/css/vendor.bundle.addons.css' %}">
+    <link rel="stylesheet" href="{% static 'download_templates/css/style.css' %}">
+
+{#    <link rel="shortcut icon" href="{% static 'download_templates/images/favicon.png' %}"/>#}
+
+    {% block ext_css %}
+    {% endblock %}
+</head>
+
+<body>
+<div class="container-scroller">
+    <nav class="navbar horizontal-layout col-lg-12 col-12 p-0">
+        {% block nav_top %}
+            <div class="nav-top flex-grow-1">
+                <div class="container d-flex flex-row h-100 align-items-center">
+                    <div class="text-center navbar-brand-wrapper d-flex align-items-center">
+                        <a class="navbar-brand brand-logo" href="{% url 'index' %}"><img
+                                src="{% static 'extends/images/logo.svg' %}"
+                                alt="logo"/></a>
+                        <a class="navbar-brand brand-logo-mini" href="{% url 'index' %}"><img
+                                src="{% static 'download_templates/images/logo-mini.svg' %}" alt="logo"/></a>
+                    </div>
+                    <div class="navbar-menu-wrapper d-flex align-items-center justify-content-between flex-grow-1">
+                        <ul class="navbar-nav navbar-nav-right mr-0 ml-auto">
+                            <li class="nav-item dropdown d-none d-lg-flex nav-language">
+                                <div class="nav-link">
+                                    <span id="showtime"></span>
+                                </div>
+                            </li>
+                            <li class="nav-item nav-profile dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown"
+                                   id="profileDropdown">
+                                    {#                                    <img src="https://via.placeholder.com/39x39" alt="profile"/>#}
+                                    <img src="{% static 'extends/images/user-icon.svg' %}" alt="profile"/>
+                                    <span class="nav-profile-name">{{ user.username }}</span>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-right navbar-dropdown"
+                                     aria-labelledby="profileDropdown">
+                                    <a class="dropdown-item" href="{% url 'password_change' %}?next={{ request.path }}">
+                                        <i class="icon-settings text-primary mr-2"></i>
+                                        修改密码
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="{% url 'logout' %}?next={{ request.path }}">
+                                        <i class="icon-logout text-primary mr-2"></i>
+                                        退出
+                                    </a>
+                                </div>
+                            </li>
+                        </ul>
+                        <button class="navbar-toggler align-self-center" type="button" data-toggle="minimize">
+                            <span class="icon-menu text-dark"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endblock %}
+
+        {% block nav_bottom %}
+            <div class="nav-bottom">
+                <div class="container">
+                    <!-- justify-content: flex-start; 从行首起始位置开始排列 -->
+                    <ul class="nav page-navigation" style="justify-content: flex-start;">
+                        <li class="nav-item">
+{#                            link-icon icon-screen-desktop#}
+                            <a href="{% url 'index' %}" class="nav-link"><i
+                                    class="link-icon icon-home"></i><span
+                                    class="menu-title">首&nbsp;&nbsp;页</span></a>
+                        </li>
+
+                        <li class="nav-item" style="margin-left: 40px">
+                            <a href="#" class="nav-link"><i class="link-icon icon-book-open"></i><span
+                                    class="menu-title">证书</span><i class="menu-arrow"></i></a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    <li class="nav-item"><a class="nav-link"
+                                                            href="{% url 'cert:create_cert_page' %}">创建证书</a></li>
+                                    <li class="nav-item"><a class="nav-link"
+                                                            href="{% url 'cert:bulk_create_cert_page' %}">批量创建证书</a>
+                                    </li>
+                                    <li class="nav-item"><a class="nav-link"
+                                                            href="{% url 'cert:cert_page' %}">查看域名证书</a>
+                                    </li>
+                                    <li class="nav-item"><a class="nav-link"
+                                                            href="{% url 'cert:upload_cert' %}">上传证书</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+                        <li class="nav-item" style="margin-left: 40px">
+                            <a href="#" class="nav-link"><i class="link-icon icon-disc"></i><span
+                                    class="menu-title">域名</span><i class="menu-arrow"></i></a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    <li class="nav-item"><a class="nav-link"
+                                                            href="{% url 'cert:sub_domain_page' %}">查看子域名</a>
+                                    </li>
+                                    <li class="nav-item"><a class="nav-link"
+                                                            href="{% url 'cert:domain_archive' %}">添加解析记录</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        {% endblock %}
+    </nav>
+
+    <!-- partial -->
+    <div class="container-fluid page-body-wrapper">
+        <div class="main-panel">
+
+            {% block content_wrapper %}
+                <!-- content-wrapper ends -->
+            {% endblock %}
+
+            {% block footer %}
+                <footer class="footer">
+                    <div class="w-100 clearfix">
+                    <span class="text-muted d-block text-center text-sm-left d-sm-inline-block">Powered by gaea © 2019
+                    </span>
+                        <span class="float-none float-sm-right d-block mt-1 mt-sm-0 text-center">Hand-crafted & made with <i
+                                class="icon-heart text-danger"></i></span>
+                    </div>
+                </footer>
+            {% endblock %}
+        </div>
+    </div>
+</div>
+<!-- container-scroller -->
+
+<script src="{% static 'extends/js/showtime.js' %}"></script>
+<!-- plugins:js -->
+<script src="{% static 'download_templates/vendors/js/vendor.bundle.base.js' %}"></script>
+<script src="{% static 'download_templates/vendors/js/vendor.bundle.addons.js' %}"></script>
+<script src="{% static 'download_templates/js/template.js' %}"></script>
+
+
+{% block ext_js %}
+{% endblock %}
+</body>
+
+</html>
