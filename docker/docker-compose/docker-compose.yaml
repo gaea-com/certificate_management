@@ -26,7 +26,7 @@ services:
         sed -i 's/{{ WEB }}/web/g' /etc/nginx/conf.d/nginx_cert.conf
         nginx -g 'daemon off;'
   web:
-    image: zzfeng2012/ssl-cert:v0.0.1
+    image: gaeamobile/certmanger:latest
     environment:
       - DB_NAME=            # 数据库名称
       - DB_USER=            # 数据库账号
