@@ -103,7 +103,6 @@ class DNSPOD(object):
             if self.prefix_domain:
                 sub_domain = ''.join([sub_domain, ".", self.prefix_domain])
             record_id = ','.join([record["id"] for record in records if record["name"] == sub_domain])
-            print(record_id)
             if record_id:
                 return record_id
             else:
@@ -121,7 +120,7 @@ class DNSPOD(object):
             data = []
             for item in records:
                 # 过滤掉"MX", "TXT", "SRV"类型的记录
-                if item['name'] != self.prefix_domain and item["type"] not in ("MX", "SRV") \
+                if item['name'] != self.prefix_domain and item["type"] not in ("MX", "TXT", "SRV", "NS") \
                         and item['name'].endswith(self.prefix_domain):
                     data.append(
                         {
@@ -145,9 +144,9 @@ class DNSPOD(object):
             records = request.json()['records']
             data = []
             for item in records:
-                # 过滤掉 MX TXT SRV类型的记录
+                # 过滤掉"MX", "TXT", "SRV"类型的记录
                 if part:
-                    if item['name'] != self.prefix_domain and item["type"] not in ("MX", "SRV") \
+                    if item['name'] != self.prefix_domain and item["type"] not in ("MX", "TXT", "SRV", "NS") \
                             and item['name'].endswith(self.prefix_domain):
                         data.append(
                             {
@@ -216,15 +215,12 @@ class DNSPOD(object):
             record_id = self.get_record_id(sub_domain)
             if not record_id:
                 return False
-
             payload = {
                 "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 token以逗号分割
                 "format": "json",
                 "domain": self.second_level_domain,
                 "record_id": record_id,
             }
-
-            print(payload)
             r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
             code = r.json()["status"]["code"]
             if code == "1":

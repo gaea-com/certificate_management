@@ -147,8 +147,8 @@ class CLOUDFLARE(object):
             data = []
             for page in range(1, total_pages + 1):
                 for item in result:
-                    # 过滤掉"MX", "TXT"类型的记录
-                    if item["name"] != self.domain and item["type"] not in ("MX", "TXT") and \
+                    # 过滤掉"MX", "TXT", "SRV"类型的记录
+                    if item["name"] != self.domain and item["type"] not in ("MX", "TXT", "SRV", "NS") and \
                             item["name"].endswith(self.domain):
                         data.append(
                             {
@@ -207,8 +207,8 @@ class CLOUDFLARE(object):
             for page in range(1, total_pages + 1):
                 for item in result:
                     if part:
-                        # 过滤掉"MX", "TXT"类型的记录
-                        if item["name"] != self.domain and item["type"] not in ("MX", "TXT") and \
+                        # 过滤掉"MX", "TXT", "SRV"类型的记录
+                        if item["name"] != self.domain and item["type"] not in ("MX", "TXT", "SRV", "NS") and \
                                 item["name"].endswith(self.domain):
                             data.append(
                                 {

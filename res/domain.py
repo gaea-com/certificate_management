@@ -24,12 +24,12 @@ class VerifyHttps(object):
         if expire_date:
             return start_date, expire_date
         else:
-            dns_resolver = QueryDNSResolver(self.domain)
-            address_list = dns_resolver.A_query()
-            for address in address_list:
-                start_date, expire_date = self.exec_cmd(address)
-                if expire_date:
-                    return start_date, expire_date
+            # dns_resolver = QueryDNSResolver(self.domain)
+            # address_list = dns_resolver.A_query()
+            # for address in address_list:
+            #     start_date, expire_date = self.exec_cmd(address)
+            #     if expire_date:
+            #         return start_date, expire_date
             return None, None
 
     def exec_cmd(self, domain):

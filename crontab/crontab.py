@@ -48,7 +48,7 @@ class SSLCertExpiredAlarms(object):
     """
 
     def __init__(self):
-        self.days = 50  # 证书距离过期剩余天数
+        self.days = 5  # 证书距离过期剩余天数
 
     def alarms(self):
         # acme创建的免费证书有效期最多90天，这里过滤100之内的域名，即所有域名

@@ -113,7 +113,7 @@ class ALIYUN(object):
 
             data = []
             for item in records:
-                if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV") and \
+                if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV", "NS") and \
                         item["RR"].endswith(self.prefix_domain):
                     data.append(
                         {
@@ -158,7 +158,7 @@ class ALIYUN(object):
             data = []
             for item in records:
                 if part:
-                    if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV") and \
+                    if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV", "NS") and \
                             item["RR"].endswith(self.prefix_domain):
                         data.append(
                             {
