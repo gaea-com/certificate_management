@@ -102,7 +102,8 @@ class DNSPOD(object):
             records = request.json()['records']
             if self.prefix_domain:
                 sub_domain = ''.join([sub_domain, ".", self.prefix_domain])
-            record_id = ''.join([record["id"] for record in records if record["name"] == sub_domain])
+            record_id = ','.join([record["id"] for record in records if record["name"] == sub_domain])
+            print(record_id)
             if record_id:
                 return record_id
             else:
@@ -222,6 +223,8 @@ class DNSPOD(object):
                 "domain": self.second_level_domain,
                 "record_id": record_id,
             }
+
+            print(payload)
             r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
             code = r.json()["status"]["code"]
             if code == "1":
@@ -229,7 +232,7 @@ class DNSPOD(object):
                 return True
             logger.error(F"del record failed: {r.text}")
         except ConnectTimeout as e:
-            logger.error(F"del record failed: {e}")
+            logger.error(F"del record timeout: {e}")
         except Exception:
             logger.error("del record unknown exception")
             logger.error(traceback.format_exc())
