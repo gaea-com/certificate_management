@@ -13,7 +13,7 @@ class DomainAdmin(admin.ModelAdmin):
     )
     # list_display = [d.name for d in Domain._meta.get_fields()]
 
-    search_fields = ('domain',)
+    search_fields = ('domain', 'dns',)
 
 
 @admin.register(SSLCertContent)
