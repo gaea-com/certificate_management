@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: domain-cert
+  namespace: domain-cert
+spec:
+  selector:
+    cert-app: cert-deployment
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: domain-cert
+  namespace: domain-cert
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      cert-app: cert-deployment
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        cert-app: cert-deployment
+    spec:
+      containers:
+        - name: django
+          image: gaeamobile/certmanger:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: DB_NAME                     # 数据库名称, 默认: ssl_cert
+              value: "ssl_cert"
+            - name: DB_USER                     # 数据库账号, 默认: root
+              value: "root"
+            - name: DB_PASSWORD                 # 数据库密码, 默认: root123456
+              value: "root123456"
+            - name: DB_HOST                     # 数据库地址, 默认: 127.0.0.1
+              value: "127.0.0.1"
+            - name: DB_PORT                     # 数据库端口, 默认: 3306
+              value: "3306"
+            - name: ADMINS_EMAIL                # 管理员邮箱, admin账号对应的邮箱, 默认admin@admin.com
+              value: "admin@admin.com"
+            - name: EMAIL_HOST                  # 发送邮件的服务器地址
+              value: ""
+            - name: EMAIL_HOST_USER             # 发送邮件的邮箱
+              value: ""
+            - name: EMAIL_PASSWORD              # 发送邮件的邮箱密码
+              value: ""
+            - name: EMAIL_PORT                  # 发送邮件的邮箱服务器端口号
+              value: ""
+            - name: EMAIL_SSL                   # 发送邮件的邮箱是否开启加密, True|False (默认为True)
+              value: "True"
+            - name: STAGING                     # 是否使用测试模式创建证书, True: 测试模式, False: 关闭测试模式（用于正式环境）。注: 测试模式下创建的证书不能使用，此模式只适用于代码测试
+              value: "False"
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: static-dir
+              mountPath: /data/www/collect_static
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1000Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+
+        - name: nginx
+          image: nginx:alpine
+          imagePullPolicy: Always
+          env:
+            - name: web
+              value: 127.0.0.1
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          workingDir: /etc/nginx/
+          command:
+            - /bin/sh
+            - -c
+            - |
+              sed -i 's/#gzip  on.*/gzip  on;/g' /etc/nginx/nginx.conf
+              sed -i '/gzip  on.*/a\    gzip_comp_level 6;' /etc/nginx/nginx.conf
+              sed -i '/gzip_comp_level.*/a\    gzip_http_version 1.1;' /etc/nginx/nginx.conf
+              sed -i '/gzip_comp_level.*/a\    gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;' /etc/nginx/nginx.conf
+              sed -i 's/{{ WEB }}/127.0.0.1/g' /etc/nginx/conf.d/nginx_cert.conf
+              nginx -g 'daemon off;'
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: static-dir
+              mountPath: /data/www/collect_static
+          livenessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            timeoutSeconds: 30
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+      volumes:
+        - name: static-dir
+          emptyDir: {}
+        - name: nginx-config
+          emptyDir: {}
+

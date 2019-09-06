@@ -1,0 +1,34 @@
+{% extends 'bash-head-footer.html' %}
+
+{% block main %}
+    <div class="layui-container fly-marginTop fly-user-main">
+        <ul class="layui-nav layui-nav-tree layui-inline" lay-filter="user">
+            <li class="layui-nav-item">
+                <a href="{% url 'users:user_center' %}">
+                    <i class="layui-icon">&#xe612;</i>
+                    用户中心
+                </a>
+            </li>
+{#            <li class="layui-nav-item">#}
+{#                <a href="{% url 'users:settings' %}">#}
+{#                    <i class="layui-icon">&#xe620;</i>#}
+{#                    基本设置#}
+{#                </a>#}
+{#            </li>#}
+        </ul>
+
+        <div class="site-tree-mobile layui-hide">
+            <i class="layui-icon">&#xe602;</i>
+        </div>
+        <div class="site-mobile-shade"></div>
+
+        <div class="site-tree-mobile layui-hide">
+            <i class="layui-icon">&#xe602;</i>
+        </div>
+        <div class="site-mobile-shade"></div>
+
+        {% block settings_content %}
+        {% endblock %}
+    </div>
+
+{% endblock %}

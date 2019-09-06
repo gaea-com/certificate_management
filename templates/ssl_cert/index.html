@@ -1,0 +1,371 @@
+{% extends 'base-menu.html' %}
+
+{% load static %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static 'css/plugins/dropdown.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="layui-container">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md12">
+                <div class="fly-panel" style="min-height: 600px">
+                    <div class="fly-panel-title">
+                        <h3 style="display: inline"><strong>域名列表</strong></h3>
+
+                        <div class="searchTable layui-inline" style="float: right">
+                            <div class="layui-inline">
+                                <input class="layui-input" name="id" id="tableReload" autocomplete="off"
+                                       placeholder="域名">
+                            </div>
+                            <button class="layui-btn" data-type="reload">搜索</button>
+                        </div>
+                    </div>
+
+                    <div class="fly-panel-main">
+                        <div class="layui-btn-group">
+                            <button type="button" class="layui-btn layui-btn-sm" id="createSSLCert"><i
+                                    class="layui-icon">&#xe654;</i>创建证书
+                            </button>
+                            <button type="button" class="layui-btn layui-btn-sm" id="uploadSSLCert"><i
+                                    class="layui-icon">&#xe62f;</i>上传证书
+                            </button>
+                        </div>
+
+                        <table class="layui-hide" id="domainTable" lay-filter="domainFilter"></table>
+
+                        <script type="text/html" id="barDomain">
+                            <a class="layui-btn layui-btn-xs" lay-event="viewSSLCert">查看</a>
+                            <div class="urp-dropdown urp-dropdown-table">
+                                <button class="layui-btn layui-btn-xs urp-dropdown-btn">
+                                    更多<i class="layui-icon layui-icon-down"></i>
+                                </button>
+                            </div>
+                        </script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script src="{% static 'js/plugins/moment.js' %}"></script>
+    <script>
+        $("#menuIndex").addClass("layui-this");
+    </script>
+
+    <script>
+        layui.use(['table', 'dropdown'], function () {
+            var table = layui.table,
+                dropdown = layui.dropdown;
+            table.render({
+                elem: '#domainTable',
+                url: "{% url 'ssl_cert:domain_list' %}",
+                cols: [[
+                    {title: "序号", align: 'center', width: 80, type: 'numbers'},
+                    {field: 'domain', title: '域名', align: 'center'},
+                    {
+                        field: 'start_date', title: '开始日期', align: 'center', width: 120, templet: function (d) {
+                            return moment(d.start_date).format('YYYY-MM-DD')
+                        }
+                    },
+                    {
+                        field: 'expire_date', title: '过期日期', align: 'center', width: 120, templet: function (d) {
+                            return moment(d.expire_date).format('YYYY-MM-DD')
+                        }
+                    },
+                    {
+                        field: '剩余天数', title: '剩余天数', align: 'center', width: 120, templet: function (d) {
+                            var nowTime = moment();
+                            var expireTime = moment(d.expire_date);
+                            return expireTime.diff(nowTime, 'days') + " 天"
+                        }
+                    },
+                    {field: 'dns', title: 'DNS', align: 'center', width: 100},
+                    {
+                        field: 'status', title: '状态', align: 'center', width: 80, templet: function (d) {
+                            if (d.status === "valid") {
+                                return '<span class="layui-btn layui-btn-xs">有效</span>';
+                            } else if (d.status === "invalid") {
+                                return '<span class="layui-btn layui-btn-danger layui-btn-xs">无效</span>';
+                            } else if (d.status === "pending") {
+                                return '<span class="layui-btn layui-btn-warm layui-btn-xs">创建中</span>';
+                            } else if (d.status === "failed") {
+                                return '<span class="layui-btn layui-btn-danger layui-btn-xs">失败</span>';
+                            } else {
+                                return '<span class="layui-btn layui-btn-danger layui-btn-xs">None</span>';
+                            }
+                        }
+                    },
+                    {field: '操作', title: '操作', width: 140, toolbar: '#barDomain'},
+                ]],
+                page: true,
+                limit: 20,
+                id: 't_reload',
+                done: function (res) {
+                    // 表格下拉菜单初始化
+                    dropdown("#domainTable", res.data, function (data) {
+                        var options = [
+                            {
+                                title: "更新",
+                                icon: "layui-icon-right",
+                                {#url: "http://baidu.com",#}
+                                event: function () {
+                                    {#layer.alert(JSON.stringify(data));#}
+                                    console.log($(this));
+                                    var id = data.id;
+                                    updateSSLCert(id);
+                                }
+                            },
+                            {
+                                {#title: "停用",#}
+                                title: disableOrEnable(data.status),
+                                icon: "layui-icon-right",
+                                event: function () {
+                                    {#layer.alert("触发了事件", {icon: 1});#}
+                                    var id = data.id;
+                                    var state = data.status;
+                                    disableSSLCert(id, state);
+                                }
+                            },
+                            {
+                                title: "删除",
+                                icon: "layui-icon-right",
+                                event: function () {
+                                    var id = data.id;
+                                    deleteSSLCert(id);
+
+                                }
+                            },
+                            {
+                                title: "子域名",
+                                icon: "layui-icon-right",
+                                event: function () {
+                                    var domain = data.domain;
+                                    window.location.href = "{% url 'ssl_cert:sub_domains' %}?domain=" + domain;
+                                }
+                            },
+                            {
+                                title: "DNS解析",
+                                icon: "layui-icon-right",
+                                event: function () {
+                                    {#layer.alert(JSON.stringify(data), {icon: 1});#}
+                                    var domain = data.domain;
+                                    var dns = data.dns;
+                                    window.location.href = "{% url 'ssl_cert:dns' %}?domain=" + domain + "&dns=" + dns;
+                                }
+                            },
+                            {
+                                title: "通知邮箱",
+                                icon: "layui-icon-right",
+                                event: function () {
+                                    var domain = data.domain;
+                                    toEmail(domain);
+                                }
+                            },
+                        ];
+                        return options;
+                    })
+                }
+            });
+
+
+            var $ = layui.$, active = {
+                reload: function () {
+                    var tableReload = $('#tableReload');
+                    if (!tableReload) {
+                        return
+                    }
+                    // 执行重载
+                    table.reload('t_reload', {
+                        page: {
+                            curr: 1 //重新从第 1 页开始
+                        }
+                        , where: {
+                            searchContent: tableReload.val()
+                        }
+                    }, 'data');
+                }
+            };
+
+            $('.searchTable .layui-btn').on('click', function () {
+                var type = $(this).data('type');
+                active[type] ? active[type].call(this) : '';
+            });
+
+            // 监控【查看】按钮
+            table.on('tool(domainFilter)', function (obj) {
+                var data = obj.data;
+                var domain = data.domain;
+                {#layer.alert(JSON.stringify(data));#}
+                if (obj.event === "viewSSLCert") {
+                    window.location.href = "{% url 'ssl_cert:view_ssl_cert' %}?domain=" + domain
+                }
+            });
+
+            // 根据域名状态显示停用或启用按钮
+            function disableOrEnable(status) {
+                if (status === "valid") {
+                    return "停用"
+                } else if (status === "invalid") {
+                    return "启用"
+                } else {
+                    return "停用"
+                }
+            }
+
+            // 更新证书
+            function updateSSLCert(id) {
+                var url = "{% url 'ssl_cert:update_ssl_cert' %}";
+                var data = {
+                    "id": id,
+                    "csrfmiddlewaretoken": "{{ csrf_token }}",
+                };
+                layer.confirm("确定更新吗？", function (index) {
+                    // loading 加载层
+                    layer.load(0, {shade: false}); // 0代表加载的风格，支持0-2
+                    $.post(url, data, function (result) {
+                        layer.closeAll('loading');
+                        if (result['status'] === "success") {
+                            layer.alert("稍等片刻，证书将在1分钟后更新完成", {icon: 1});
+                        } else {
+                            layer.alert(result["msg"], {icon: 5});
+                        }
+                    });
+                    layer.close(index);
+                });
+            }
+
+            // 禁用/启用证书
+            function disableSSLCert(id, state) {
+                var url = "{% url 'ssl_cert:disable_ssl_cert' %}";
+                var data = {
+                    "id": id,
+                    "csrfmiddlewaretoken": "{{ csrf_token }}",
+                };
+                var status = disableOrEnable(state);
+                layer.confirm('确定要' + status + '吗？', function (index) {
+                    $.post(url, data, function (result) {
+                        if (result["status"] === "success") {
+                            layer.open({
+                                title: '信息',
+                                content: result["msg"],
+                                icon: 1,
+                                end: function () {
+                                    window.location.reload();
+                                }
+                            });
+                        } else if (result['status'] === "failed") {
+                            layer.alert(result["msg"], {icon: 5})
+                        } else {
+                            layer.alert('操作失败，请检查', {icon: 5});
+                        }
+                    });
+                    layer.close(index);
+                });
+            }
+
+            // 删除证书
+            function deleteSSLCert(id) {
+                var url = "{% url 'ssl_cert:delete_ssl_cert' %}";
+                var data = {
+                    "id": id,
+                    "csrfmiddlewaretoken": "{{ csrf_token }}",
+                };
+                layer.confirm('确定删除吗？', function (index) {
+                    layer.load(0, {shade: false});          // loading 加载层。0代表加载的风格，支持0-2
+                    $.post(url, data, function (result) {
+                        layer.closeAll('loading');          // 关闭loading 加载层
+                        if (result["status"] === "success") {
+                            layer.open({
+                                title: '信息',
+                                content: "删除成功",
+                                icon: 1,
+                                end: function () {
+                                    window.location.reload();
+                                }
+                            });
+                        } else {
+                            layer.alert('删除失败', {icon: 5});
+                        }
+                    });
+                    layer.close(index);
+                });
+            }
+
+            // 接收邮箱
+            function toEmail(domain) {
+                layer.open({
+                    type:2,
+                    title: '接收通知邮箱',
+                    shadeClose: true,
+                    maxmin: true,
+                    area: ['550px', '350px'],
+                    content: ["{% url 'ssl_cert:to_email' %}?domain=" + domain],
+                })
+            }
+        });
+    </script>
+
+    <script>
+        // 创建证书
+        $("#createSSLCert").click(function () {
+            window.location.href = "{% url 'ssl_cert:create' %}"
+        });
+
+        // 上传证书
+        $("#uploadSSLCert").click(function () {
+            layer.open({
+                type: 2,
+                title: '上传证书',
+                shadeClose: true,
+                maxmin: true,
+                area: ['550px', '550px'],
+                content: ["{% url 'ssl_cert:upload_ssl_cert' %}"],
+                end: function () {
+                    window.location.reload();
+                }
+            })
+        });
+    </script>
+    <script>
+        // 所有元素加载完毕执行
+        // 校验创建中状态的域名，状态改变时，刷新页面
+        window.onload = function () {
+            var timer = setInterval(function () {
+                console.log("start timer ==> %d", timer);
+                $(".layui-table-main table tbody").find("tr").each(function () {
+                    var tdArr = $(this).children();
+                    var domain = tdArr.eq(1).find("div").text();
+                    var status = tdArr.eq(6).find("span").text();
+
+                    var url = "{% url 'ssl_cert:check_domain_status' %}?domain=" + domain;
+                    if (status === "创建中") {
+                        $.get(url, function (result, status) {
+                            if (status === "success") {
+                                if (result["status"] !== "pending") {
+                                    clearInterval(timer);
+                                    console.log("end timer ==> %d", timer);
+                                    location.reload();
+                                }
+                            }
+                        })
+                    }
+                });
+            }, 10000);
+        };
+
+        //window.onload = function () {
+        //    $(".layui-table-main table tbody").find("tr").each(function () {
+        //        var tdArr = $(this).children();
+        //        {#var domain = tdArr.eq(1).find("div").text();#}
+        //        var status = tdArr.eq(6).find("span").text();
+        //        var operation = tdArr.eq(7).find("button i");
+        //        {#var beforeElement = window.;#}
+        //        console.log(operation);
+        //    });
+        //};
+    </script>
+{% endblock %}

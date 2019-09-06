@@ -1,0 +1,176 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+    <div class="layui-container fly-marginTop">
+        <div class="layui-row">
+
+            <input hidden name="domain" value="{{ domain }}" id="hiddenInputDomain">
+            <input hidden name="old_name" value="{{ name }}" id="hiddenInputOldName">
+
+            <form class="layui-form" method="post" id="addRecordForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">主机记录</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="new_name" lay-verify="required" lay-reqtext="真的不输入点什么吗？"
+                               placeholder="请输入内容" autocomplete="off" class="layui-input" value="{{ name }}">
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">记录类型</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <select name="type" lay-filter="recordType"
+                                lay-verify="selectRecordType">
+                            <option value="" selected=""></option>
+                            <option value="A" {% ifequal record_type "A" %}selected="selected"{% endifequal %}>A - 将域名指向一个IPV4地址
+                            </option>
+                            <option value="CNAME" {% ifequal record_type "CNAME" %}selected="selected"{% endifequal %}>CNAME - 将域名指向另外一个域名
+                            </option>
+                            <option value="AAAA" {% ifequal record_type "AAAA" %}selected="selected"{% endifequal %}>AAAA - 将域名指向一个IPV6地址
+                            </option>
+                            <option value="NS" {% ifequal record_type "NS" %}selected="selected"{% endifequal %}>NS - 将子域名指向其他DNS服务器解析
+                            </option>
+                            <option value="MX" {% ifequal record_type "MX" %}selected="selected"{% endifequal %}>MX - 将域名指向邮件服务器地址
+                            </option>
+                            <option value="SRV" {% ifequal record_type "SRV" %}selected="selected"{% endifequal %}>SRV - 记录提供特定的服务的服务器
+                            </option>
+                            <option value="TXT" {% ifequal record_type "TXT" %}selected="selected"{% endifequal %}>TXT - 文本长度限制512，通常做SPF记录（反垃圾邮件）
+                            </option>
+                            <option value="CAA" {% ifequal record_type "CAA" %}selected="selected"{% endifequal %}>CAA - CA证书颁发机构授权校验
+                            </option>
+                            <option value="显示URL" {% ifequal record_type "显示URL" %}selected="selected"{% endifequal %}>显示URL - 将域名302重定向到另外一个地址
+                            </option>
+                            <option value="隐性URL" {% ifequal record_type "隐性URL" %}selected="selected"{% endifequal %}>隐性URL - 与显示URL类似，但是会隐藏真实目标地址
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">解析线路</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <select name="line">
+                            <option value="默认" {% ifequal line "默认" %}selected="selected"{% endifequal %}>默认</option>
+                            <option value="移动" {% ifequal line "移动" %}selected="selected"{% endifequal %}>移动</option>
+                            <option value="联通" {% ifequal line "联通" %}selected="selected"{% endifequal %}>联通</option>
+                            <option value="电信" {% ifequal line "电信" %}selected="selected"{% endifequal %}>电信</option>
+                            <option value="教育网" {% ifequal line "教育网" %}selected="selected"{% endifequal %}>教育网</option>
+                            <option value="国外" {% ifequal line "国外" %}selected="selected"{% endifequal %}>国外</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">记录值</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="value" lay-verify="required"
+                               lay-reqtext="真的不输入点什么吗？" placeholder="请输入内容" autocomplete="off"
+                               class="layui-input" value="{{ value }}">
+                    </div>
+                </div>
+
+                <div class="layui-form-item" id="mx" style="display: none;">
+                    <label class="layui-form-label">MX优先级:</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="mx" lay-verify="mx"
+                               placeholder="请输入内容" autocomplete="off" class="layui-input"
+                               value="{% ifequal mx '-' %}{% else %}{{ mx }}{% endifequal %}">
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">TTL（秒）</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="ttl" lay-verify="required"
+                               lay-reqtext="真的不输入点什么吗？" placeholder="请输入内容" autocomplete="off"
+                               class="layui-input" value="{{ ttl }}">
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button type="button" class="layui-btn" lay-submit="" lay-filter="formSubmit">立即提交
+                        </button>
+                        <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        layui.use(['form', 'layedit', 'laydate'], function () {
+            var form = layui.form
+                , layer = layui.layer;
+
+            form.verify({
+                // 验证记录类型是否选择
+                selectRecordType: function (value) {
+                    if (value === "") {
+                        return "请选择记录类型"
+                    }
+                },
+                // mx input显示时验证input中是否为空
+                mx: function (value) {
+                    var display = $("#mx").css("display");
+                    if (display !== "none") {
+                        if (value === "") {
+                            return "真的不输入点什么吗？"
+                        }
+                    }
+                }
+            });
+
+            // 监听select选择框
+            form.on('select(recordType)', function (data) {
+                if (data.value === "MX") {
+                    $("#mx").show();
+                } else {
+                    $("#mx").hide();
+                }
+            });
+
+            //监听提交
+            form.on('submit(formSubmit)', function (data) {
+                {#layer.alert(JSON.stringify(data.field), {#}
+                {#        title: '最终的提交信息'#}
+                {#    }#}
+                {#);#}
+                (data.field)['csrfmiddlewaretoken'] = "{{ csrf_token }}";
+                (data.field)['domain'] = $("#hiddenInputDomain").val();
+                (data.field)['old_name'] = $("#hiddenInputOldName").val();
+                modifyRecord(data.field);
+            });
+        });
+    </script>
+
+    <script>
+        // 添加记录
+        function modifyRecord(data) {
+            layer.load(0, {shade: false}); // loading 加载层, 0代表加载的风格，支持0-2
+            var url = "{% url 'ssl_cert:modify_record' %}";
+            $.post(url, data, function (result) {
+                layer.closeAll('loading');  // 关闭loading 加载层
+                if (result["status"] === "success") {
+                    layer.open({
+                        title: "信息",
+                        icon: 1,
+                        content: '修改记录成功',
+                        end: function () {
+                            parent.layer.closeAll();    // 关闭所有弹窗
+                        },
+                    });
+                } else {
+                    {#layer.msg(result["msg"], {offset: 't'});#}
+                    layer.alert("修改记录失败", {icon: 2,});
+                }
+            })
+        }
+    </script>
+{% endblock %}

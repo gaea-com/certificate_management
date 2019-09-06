@@ -1,6 +1,6 @@
 FROM python:alpine3.8
 
-ENV WEB_DIR "/data/web"
+ENV WEB_DIR "/data/www"
 ENV ACME_DIR "/root/.acme.sh"
 
 WORKDIR ${WEB_DIR}
@@ -61,7 +61,7 @@ RUN set -ex \
     && rm -rf ${WEB_DIR}/acme.sh \
     && sed -i "s/\(.*acme.*\)/# \1/g" /var/spool/cron/crontabs/root \
     \
-    && chmod +x ${WEB_DIR}/scripts/sh/*.sh
+    && chmod +x ${WEB_DIR}/scripts/*.sh
 
 
 VOLUME ${WEB_DIR}
@@ -71,4 +71,4 @@ EXPOSE 8000
 
 STOPSIGNAL SIGTERM
 
-CMD ["/data/web/scripts/sh/run_web.sh"]
+CMD ["/data/www/scripts/run.sh"]

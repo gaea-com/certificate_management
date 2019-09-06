@@ -1,42 +1,121 @@
-<!DOCTYPE html>
-<html lang="zh-cn">
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ssl证书管理-注册</title>
-    <link rel="stylesheet" href="https://unpkg.com/mobi.css/dist/mobi.min.css">
+{% extends 'bash-head-footer.html' %}
+
+{% load static %}
+
+{% block css %}
     <style>
-        .errorlist {
-            color: red;
+        .alert {
+            position: relative;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
         }
     </style>
-</head>
-<body>
-<div class="flex-center">
-    <div class="container">
-        <div class="flex-center">
-            <div class="unit-1-2 unit-1-on-mobile">
-                <h3>注册</h3>
-                <form class="form" action="{% url 'users:register' %}" method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {{ field.errors }}
-                        {#                        {% if field.help_text %}#}
-                        {#                            <p class="help text-small text-muted">{{ field.help_text|safe }}</p>#}
-                        {#                        {% endif %}#}
-                    {% endfor %}
-                    <button type="submit" class="btn btn-primary btn-block">注册</button>
-                    <input type="hidden" name="next" value="{{ next }}"/>
-                </form>
-                <div class="flex-center top-gap text-small">
-                    <a href="{% url 'login' %}">已有账号登录</a>
+{% endblock %}
+
+{% block main %}
+    <div class="layui-container fly-marginTop">
+        <div class="fly-panel fly-panel-user" pad20>
+            <div class="layui-tab layui-tab-brief" lay-filter="user">
+                <ul class="layui-tab-title">
+                    <li><a href="{% url 'users:login' %}">登入</a></li>
+                    <li class="layui-this">注册</li>
+                </ul>
+                <div class="layui-form layui-tab-content" id="LAY_ucm" style="padding: 20px 0;">
+                    <div class="layui-tab-item layui-show">
+                        <div class="layui-form layui-form-pane">
+
+                            {% for field in form %}
+                                {% if field.errors %}
+                                    <div class="alert alert-danger" style="width: 40%">
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+
+                            <form method="post" action="{% url 'users:register' %}"> {% csrf_token %}
+                                <div class="layui-form-item">
+                                    <label for="L_username" class="layui-form-label">用户名</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" id="L_username" name="username" required
+                                               lay-verify="required" autocomplete="off" class="layui-input"
+                                               value="{% if form.username.value %}{{ form.username.value }}{% endif %}"
+                                               placeholder="用户名">
+                                    </div>
+                                    <div class="layui-form-mid layui-word-aux">将会成为您唯一的登入名</div>
+                                </div>
+                                <div class="layui-form-item">
+                                    <label for="L_email" class="layui-form-label">邮箱</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" id="L_email" name="email" required lay-verify="email"
+                                               autocomplete="off" class="layui-input"
+                                               value="{% if form.email.value %}{{ form.email.value }}{% endif %}"
+                                               placeholder="邮箱">
+                                    </div>
+                                </div>
+                                <div class="layui-form-item">
+                                    <label for="L_pass" class="layui-form-label">密码</label>
+                                    <div class="layui-input-inline">
+                                        <input type="password" id="L_pass" name="password1" required
+                                               lay-verify="required"
+                                               autocomplete="off" class="layui-input" placeholder="密码">
+                                    </div>
+                                    {#                                    <div class="layui-form-mid layui-word-aux">8到16个字符</div>#}
+                                </div>
+                                <div class="layui-form-item">
+                                    <label for="L_repass" class="layui-form-label">确认密码</label>
+                                    <div class="layui-input-inline">
+                                        <input type="password" id="L_repass" name="password2" required
+                                               lay-verify="required" autocomplete="off" class="layui-input"
+                                               placeholder="确认密码">
+                                    </div>
+                                </div>
+                                <div class="layui-form-item">
+                                    <label for="L_vercode" class="layui-form-label">验证码</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" id="id_captcha_1" name="captcha_1" required
+                                               lay-verify="required"
+                                               placeholder="验证码" autocomplete="off" class="layui-input">
+                                    </div>
+                                    <div class="layui-form-mid">
+                                        <span>
+                                            <img src="{{ image_url }}" class="captcha" alt="captcha">
+                                            <input id="id_captcha_0" name="captcha_0" type="hidden"
+                                                   value="{{ hashkey }}">
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="layui-form-item">
+                                    {#                                    <button class="layui-btn" lay-filter="*" lay-submit>立即注册</button>#}
+                                    <button class="layui-btn" type="submit">立即注册</button>
+                                    <input type="hidden" name="next" value="{{ next }}">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-</body>
-</html>
+
+{% endblock %}
+
+{% block js %}
+    <script>
+        //更新验证码图片ajax
+        $("img.captcha").click(function () {
+            $.getJSON("{% url 'captcha-refresh' %}", function (data) {
+                $("img.captcha").attr("src", data.image_url);
+                $("#id_captcha_0").attr("value", data.key);
+            });
+        });
+    </script>
+
+{% endblock %}

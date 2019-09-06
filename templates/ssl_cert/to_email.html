@@ -1,0 +1,172 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+
+    <div class="layui-container fly-marginTop">
+        <div class="layui-row">
+            <input hidden name="domain" value="{{ domain }}" id="domainInput">
+
+            <div style="display: inline">
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addEmail();">添加邮箱
+                </button>
+                {% if email_list %}
+                    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="sendSSLCert();">发送证书
+                    </button>
+                {% else %}
+                    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal layui-btn-disabled">发送证书
+                    </button>
+                {% endif %}
+            </div>
+
+            <table class="layui-table" id="dnsRecordTable">
+                <colgroup>
+                    <col width="70%">
+                    <col>
+                </colgroup>
+                <thead>
+                <tr>
+                    {#                    <th style="text-align: center">ID</th>#}
+                    <th style="text-align: center">邮箱</th>
+                    <th style="text-align: center">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for email in email_list %}
+                    <tr style="text-align: center">
+                        <td>{{ email }}</td>
+                        <td>
+                            <div class="layui-btn-group">
+                                <button type="button" class="layui-btn layui-btn-primary layui-btn-xs"
+                                        onclick="deleteEmail('{{ email }}')">删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr style="text-align: center">
+                        <td colspan="2">没有其它通知的邮箱</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        // getCookie函数
+        function getCookie(name) {
+            var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
+
+            if (arr = document.cookie.match(reg))
+                return unescape(arr[2]);
+            else
+                return null;
+        }
+
+        // DELETE请求需要把csrf设置在header中
+        $(function () {
+            $.ajaxSetup({
+                headers: {"X-CSRFToken": getCookie("csrftoken")}
+            });
+        });
+    </script>
+    <script>
+        layui.use('layer', function () {
+            var layer = layui.layer;
+        });
+
+        //添加邮箱
+        function addEmail() {
+            var domain = $("#domainInput").val();
+            var url = "{% url 'ssl_cert:to_email' %}";
+
+            layer.prompt(
+                {
+                    title: "请输入邮箱",
+                },
+                function (val, index) {
+                    var data = {
+                        "domain": domain,
+                        "email": val,
+                        "csrfmiddlewaretoken": "{{ csrf_token }}",
+                    };
+                    $.post(url, data, function (result) {
+                        if (result["status"] === "success") {
+                            layer.msg("邮箱添加成功", {
+                                time: 2000,
+                                end: function () {
+                                    layer.close(index);
+                                    location.reload();
+                                }
+                            });
+
+                        } else if (result["status"] === "failed") {
+                            layer.alert(result["msg"], {icon: 5});
+                        }
+
+                    });
+
+                });
+        }
+
+        // 删除邮箱
+        function deleteEmail(email) {
+            var domain = $("#domainInput").val();
+            var url = "{% url 'ssl_cert:to_email' %}";
+            var data = {
+                "domain": domain,
+                "email": email,
+            };
+
+            // DELETE请求，需要把csrf设置为header中
+            $.ajax({
+                url: url,
+                type: "DELETE",
+                dataType: "json",
+                data: data,
+                success: function (result) {
+                    if (result["status"] === "success") {
+                        layer.msg("删除成功", {
+                            time: 2000,
+                            end: function () {
+                                location.reload();
+                            }
+                        })
+                    } else {
+                        layer.alert(result["msg"], {icon: 5});
+                    }
+                },
+                error: function (data, textStatus, errorThrown) {
+                    {#console.log(data);#}
+                    console.log("删除邮箱异常: " + textStatus + " : " + errorThrown);
+                    alert("删除邮箱异常");
+                }
+            })
+        }
+
+        // 发送证书
+        function sendSSLCert() {
+            var domain = $("#domainInput").val();
+            var url = "{% url 'ssl_cert:send_ssl_cert_to_email' %}";
+
+            var data = {
+                "domain": domain,
+                "csrfmiddlewaretoken": "{{ csrf_token }}",
+            };
+
+            layer.load(0, {shade: false});          // loading 加载层。0代表加载的风格，支持0-2
+            $.post(url, data, function (result) {
+                layer.closeAll('loading');          // 关闭loading 加载层
+                if (result["status"] === "success") {
+                    layer.alert("证书发送成功", {icon: 1});
+                } else {
+                    layer.alert(result["msg"], {icon: 5});
+                }
+            });
+        }
+    </script>
+{% endblock %}

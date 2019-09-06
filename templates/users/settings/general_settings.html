@@ -1,0 +1,108 @@
+{% extends 'users/settings/base-settings.html' %}
+
+
+<!--
+基本设置
+没有启用此页面
+-->
+
+{% block settings_content %}
+    <div class="fly-panel fly-panel-user" pad20>
+        <div class="layui-tab layui-tab-brief" lay-filter="user">
+            <ul class="layui-tab-title" id="LAY_mine">
+                <li class="layui-this" lay-id="info">权限管理</li>
+            </ul>
+            <div class="layui-tab-content" style="padding: 20px 0;">
+                <div class="layui-form layui-form-pane layui-tab-item layui-show">
+                    <div class="searchTable">
+                        <button class="layui-btn" data-type="reload">搜索</button>
+                        <div class="layui-inline">
+                            <input class="layui-input" name="id" id="bucketReload" autocomplete="off"
+                                   placeholder="bucket 名称">
+                        </div>
+                    </div>
+
+                    <table class="layui-hide" id="domainTable" lay-filter="domain_filter"></table>
+                    <script type="text/html" id="domainToolBar">
+                        <a class="layui-btn layui-btn-xs" lay-event="edit">授权</a>
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        $(function () {
+            {#从0开始计数#}
+            $(".fly-marginTop ul li:eq(1)").addClass("layui-this");
+        })
+    </script>
+    <script>
+        layui.use('table', function () {
+            var table = layui.table;
+
+            table.render({
+                elem: '#domainTable',
+                url: "{% url 'ssl_cert:domain_list' %}",
+                limit: 10,
+                {#title: '用户数据表',#}
+                cols: [[
+                    {field: '序号', sort: true, align: 'center', width: 80, type: 'numbers'},
+                    {field: 'domain', title: '域名', align: 'center'},
+                    {field: 'dns', title: 'DNS', align: 'center', sort: true},
+                    {fixed: 'right', title: '操作', toolbar: '#domainToolBar', width: 150}
+                ]],
+                page: true,
+                id: 'tableReload',
+            });
+
+            //
+            var $ = layui.$, active = {
+                reload: function () {
+                    var bucketReload = $('#bucketReload');
+                    console.log(bucketReload.val());
+                    //执行重载
+                    table.reload('tableReload', {
+                        page: {
+                            curr: 1 //重新从第 1 页开始
+                        }
+                        , where: {
+                            bucket: bucketReload.val()
+                        }
+                    }, 'data');
+                }
+            };
+
+            $('.searchTable .layui-btn').on('click', function () {
+                var type = $(this).data('type');
+                active[type] ? active[type].call(this) : '';
+            });
+            //
+
+
+            //监听行工具事件
+            {#table.on('tool(domain_filter)', function (obj) {#}
+            {#    var data = obj.data;#}
+            {#    if (obj.event === 'edit') {#}
+            {#        layer.open({#}
+            {#            type: 2,#}
+            {#            title: '授权',#}
+            {#            shadeClose: true,#}
+            {#            maxmin: true,#}
+            {#            area: ['550px', '550px'],#}
+            {#            content: ['{% url 'users:bucket_bind_user' %}' + '?id=' + data.id, 'no'],#}
+            {#            end: function () {#}
+            {#                //关闭时做的事情#}
+            {#                oDataTable.ajax.reload();#}
+            {#                window.location.reload();#}
+            {#            }#}
+            {#        });#}
+            {#    }#}
+            {#});
+        #}
+        })
+        ;
+    </script>
+{% endblock %}

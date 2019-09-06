@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    {#    <title>Title</title>#}
+    <link rel="stylesheet" href="{% static 'layui/layui/css/layui.css' %}">
+
+    {% block css %}
+    {% endblock %}
+</head>
+<body style="margin-top: 20px;">
+
+{% block main %}
+{% endblock %}
+
+<script src="{% static 'bootstrap/js/jquery-3.2.1.min.js' %}"></script>
+<script src="{% static 'layui/layui/layui.js' %}"></script>
+
+{% block javascripts %}
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,85 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+    <div class="layui-container fly-marginTop" style="margin-top: 0px">
+        <div class="layui-row">
+
+            {#            阻止form的默认行为: form 标签后面加上 onsubmit="return false"#}
+            {#            或者button的type设置为button#}
+            <form class="layui-form" id="addUserForm" method="post">
+                {% csrf_token %}
+                <div class="layui-form-item">
+                    <label class="layui-form-label">用户名</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="username" lay-verify="title" autocomplete="off" placeholder="用户名"
+                               class="layui-input" required>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">邮&nbsp;&nbsp;&nbsp;&nbsp;箱</label>
+                    <div class="layui-input-block">
+                        <input type="email" name="email" lay-verify="title" autocomplete="off" placeholder="邮箱"
+                               class="layui-input" required>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">密&nbsp;&nbsp;&nbsp;&nbsp;码</label>
+                    <div class="layui-input-block">
+                        <input type="password" name="password1" placeholder="密码" autocomplete="off"
+                               class="layui-input" required>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">确认密码</label>
+                    <div class="layui-input-block">
+                        <input type="password" name="password2" placeholder="确认密码" autocomplete="off"
+                               class="layui-input" required>
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button type="button" class="layui-btn" id="btnSave">保存</button>
+                        <button type="button" class="layui-btn" id="btnCancel">重置</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        layui.use('layer', function () {
+            var layer = layui.layer;
+
+            $("#btnSave").on('click', function () {
+                var data = $("#addUserForm").serialize();
+                $.ajax({
+                    type: $("#addUserForm").attr('method'),
+                    url: "{% url 'users:create_user' %}",
+                    data: data,
+                    cache: false,
+                    dataType: "json",
+                    success: function (msg) {
+                        if (msg.status === 'success') {
+                            layer.alert('用户添加成功', {icon: 1}, function (index) {
+                                parent.layer.closeAll(); //关闭所有弹窗
+                            });
+                        } else if (msg.status === 'failed') {
+                            layer.alert(msg.form_errors, {icon: 5});
+                        }
+                    }
+                });
+            });
+        });
+
+        /*点取消刷新新页面*/
+        $("#btnCancel").click(function () {
+            window.location.reload();
+        });
+
+    </script>
+{% endblock %}

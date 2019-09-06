@@ -3,7 +3,7 @@ version: "3"
 services:
   nginx:
     image: nginx:1.15.11-alpine
-    working_dir: /data/web
+    working_dir: /data/www
     expose:
       - "80"
     ports:
@@ -13,7 +13,7 @@ services:
     networks:
       - backend
     volumes:
-      - code:/data/web
+      - code:/data/www
       - nginx-conf:/etc/nginx/conf.d
     command:
       - /bin/sh
@@ -28,21 +28,20 @@ services:
   web:
     image: gaeamobile/certmanger:latest
     environment:
-      - DB_NAME=            # 数据库名称
-      - DB_USER=            # 数据库账号
-      - DB_PASSWORD=        # 数据库密码
-      - DB_HOST=            # 数据库地址
-      - DB_PORT=3306            # 数据库端口
-      - ADMINS_EMAIL=       # 管理员邮箱
-      - EMAIL_PASSWORD=     # 管理员邮箱密码
-      - EMAIL_HOST=         # 发送邮件服务器
-      - EMAIL_PORT=         # 邮箱服务器端口号
-      - EMAIL_SSL=True          # 邮箱是否开启加密, True|False (默认为True)
-      - STAGING=False         # True: 使用测试模式创建证书， False: 关闭测试模式（用于线上正式环境）。
-      - DJANGO_DEBUG=False    # 关闭或打开django DEBUG模式
-      - LOG_HANDLERS=info     # 日志级别
+      - DB_NAME=ssl_cert              # 数据库名称, 默认: ssl_cert
+      - DB_USER=root                  # 数据库账号, 默认: root
+      - DB_PASSWORD=root123456        # 数据库密码, 默认: root123456
+      - DB_HOST=127.0.0.1             # 数据库地址, 默认: 127.0.0.1
+      - DB_PORT=3306                  # 数据库端口, 默认: 3306
+      - ADMINS_EMAIL=admin@admin.com  # 管理员邮箱, admin账号对应的邮箱, 默认admin@admin.com
+      - EMAIL_HOST=                   # 发送邮件的服务器地址
+      - EMAIL_HOST_USER=              # 发送邮件的邮箱
+      - EMAIL_PASSWORD=               # 发送邮件的邮箱密码
+      - EMAIL_PORT=                   # 发送邮件的邮箱服务器端口号
+      - EMAIL_SSL=True                # 发送邮件的邮箱是否开启加密, True|False (默认为True)
+      - STAGING=False                 # 是否使用测试模式创建证书, True: 测试模式, False: 关闭测试模式（用于正式环境）。注: 测试模式下创建的证书不能使用，此模式只适用于代码测试
     volumes:
-      - code:/data/web
+      - code:/data/www
       - nginx-conf:/etc/nginx/conf.d
     expose:
       - "8000"
@@ -52,7 +51,7 @@ services:
       - /bin/sh
       - -c
       - |
-        /data/web/scripts/sh/run_web.sh
+        /data/www/scripts/run.sh
 networks:
   backend:
 volumes:

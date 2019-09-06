@@ -1,0 +1,162 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+
+    <div class="layui-container fly-marginTop">
+        <div class="layui-row">
+            <form class="layui-form" method="post" id="createSSLForm">
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">DNS</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <select name="selectDns" lay-filter="DNS"
+                                lay-verify="verifySelectDns">
+                            <option value="" selected=""></option>
+                            {% for dns in dns_list %}
+                                <option value="{{ dns }}">{{ dns }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="layui-form-item" id="account1" style="display: none;">
+                    <label class="layui-form-label">ID</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="dnsAccount1" lay-verify="required"
+                               lay-reqtext="必填项，岂能为空？" placeholder="请输入内容" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item" id="account2" style="display: none;">
+                    <label class="layui-form-label">Token</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="dnsAccount2" lay-verify="required"
+                               lay-reqtext="必填项，岂能为空？" placeholder="请输入内容" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+
+                <div class="layui-form-item layui-form-text">
+                    <label class="layui-form-label">证书</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <textarea name="cert" placeholder="请输入内容" class="layui-textarea"
+                                  lay-verify="certContent"></textarea>
+                    </div>
+                </div>
+
+                <div class="layui-form-item layui-form-text">
+                    <label class="layui-form-label">私钥</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <textarea name="private-key" placeholder="请输入内容" class="layui-textarea"
+                                  lay-verify="keyContent"></textarea>
+                    </div>
+                </div>
+
+                <div class="layui-form-item layui-form-text">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="comment" placeholder="请输入内容(可为空)" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+
+
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button type="button" class="layui-btn" lay-submit="" lay-filter="formSubmit">立即提交
+                        </button>
+                        <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        layui.use(['form', 'layedit', 'laydate'], function () {
+            var form = layui.form
+                , layer = layui.layer;
+
+            // 提交时验证是否选择了DNS厂商，验证域名的输入框中的字符数量是否小于3
+            form.verify({
+                verifySelectDns: function (value) {
+                    if (value === "") {
+                        return "请选择DNS厂商"
+                    }
+                },
+                certContent: function (value) {
+                    if (value === "") {
+                        return "请输入证书内容"
+                    }
+                },
+                keyContent: function (value) {
+                    if (value === "") {
+                        return "请输入私钥内容"
+                    }
+                }
+            });
+
+            {#监听select选择框#}
+            form.on('select(DNS)', function (data) {
+                if (!data.value) {
+                    $("#account1").hide();
+                    $("#account2").hide();
+                } else if (data.value === "dnspod") {
+                    $("#account1").show();
+                    $("#account2").show();
+                    $("#account1 label").text("ID");
+                    $("#account2 label").text("Token");
+                } else if (data.value === "cloudflare") {
+                    $("#account1").show();
+                    $("#account2").show();
+                    $("#account1 label").text("Key");
+                    $("#account2 label").text("Email");
+                } else if (data.value === "aliyun") {
+                    $("#account1").show();
+                    $("#account2").show();
+                    $("#account1 label").text("Key");
+                    $("#account2 label").text("Secret");
+                }
+            });
+
+            //监听提交
+            form.on('submit(formSubmit)', function (data) {
+                {#layer.alert(JSON.stringify(data.field), {#}
+                {#        title: '最终的提交信息'#}
+                {#    }#}
+                {#);#}
+                (data.field)['csrfmiddlewaretoken'] = "{{ csrf_token }}";
+                uploadSSLCert(data.field);
+            });
+        });
+    </script>
+
+    <script>
+        function uploadSSLCert(data) {
+            layer.load(0, {shade: false}); // loading 加载层, 0代表加载的风格，支持0-2
+            var url = "{% url 'ssl_cert:upload_ssl_cert' %}";
+            $.post(url, data, function (result) {
+                layer.closeAll('loading');  // 关闭loading 加载层
+                if (result['status'] === "success") {
+                    layer.open({
+                        title: "信息",
+                        icon: 1,
+                        content: '证书上传成功',
+                        end: function () {
+                            parent.layer.closeAll();    // 关闭所有弹窗
+                        },
+                    });
+                } else {
+                    {#layer.msg(result["msg"], {offset: 't'});#}
+                    layer.alert(result["msg"], {icon: 2,});
+                }
+            })
+        }
+    </script>
+{% endblock %}

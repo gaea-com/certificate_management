@@ -1,0 +1,245 @@
+{% extends 'base-menu.html' %}
+
+{% load static %}
+
+{% block content %}
+    <div class="layui-container">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md12">
+                <div class="fly-panel" style="min-height: 600px">
+                    <div class="fly-panel-main">
+                        <div class="layui-tab">
+                            <ul class="layui-tab-title">
+                                <li class="layui-this">创建证书</li>
+                                <li>批量创建证书</li>
+                            </ul>
+                            <div class="layui-tab-content">
+                                {#创建证书内容#}
+                                <div class="layui-tab-item layui-show">
+                                    <br>
+                                    <form class="layui-form" method="post" id="createSSLForm">
+                                        <div class="layui-form-item">
+                                            <label class="layui-form-label">域名</label>
+                                            <div class="layui-input-block">
+                                                <input type="text" name="domain" lay-verify="required|domain"
+                                                       lay-reqtext="域名是必填项，岂能为空？" placeholder="请输入域名" autocomplete="off"
+                                                       class="layui-input">
+                                            </div>
+                                        </div>
+
+                                        <div class="layui-form-item">
+                                            <label class="layui-form-label">DNS解析商</label>
+                                            <div class="layui-input-block">
+                                                <select name="selectDns" lay-filter="DNS"
+                                                        lay-verify="verifySelectDns">
+                                                    <option value="" selected=""></option>
+                                                    {% for dns in dns_list %}
+                                                        <option value="{{ dns }}">{{ dns }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="layui-form-item" id="account1" style="display: none">
+                                            <label class="layui-form-label">ID</label>
+                                            <div class="layui-input-block">
+                                                <input type="text" name="dnsAccount1" lay-verify="required"
+                                                       lay-reqtext="必填项，岂能为空？" placeholder="请输入内容" autocomplete="off"
+                                                       class="layui-input">
+                                            </div>
+                                        </div>
+                                        <div class="layui-form-item" id="account2" style="display: none">
+                                            <label class="layui-form-label">Token</label>
+                                            <div class="layui-input-block">
+                                                <input type="text" name="dnsAccount2" lay-verify="required"
+                                                       lay-reqtext="必填项，岂能为空？" placeholder="请输入内容" autocomplete="off"
+                                                       class="layui-input">
+                                            </div>
+                                        </div>
+
+                                        <div class="layui-form-item">
+                                            <label class="layui-form-label">泛域名</label>
+                                            <div class="layui-input-block">
+                                                <input type="checkbox" checked="" name="extensiveDomainOpen"
+                                                       lay-skin="switch" lay-filter="switchOpen" lay-text="开启|关闭">
+                                            </div>
+                                        </div>
+
+                                        <div class="layui-form-item layui-form-text">
+                                            <label class="layui-form-label">备注</label>
+                                            <div class="layui-input-block">
+                                                <textarea name="comment" placeholder="请输入内容"
+                                                          class="layui-textarea"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="layui-form-item">
+                                            <div class="layui-input-block">
+                                                <button type="button" class="layui-btn" lay-submit=""
+                                                        lay-filter="formSubmit">立即提交
+                                                </button>
+                                                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                {#批量创建证书内容#}
+                                <div class="layui-tab-item">
+                                    <form class="layui-form" method="post">
+                                        <blockquote class="layui-elem-quote">
+                                            格式:<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;域名,DNS解析商,API_ID,API_TOKEN,on,备注(选填)<br>
+                                            例:<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;test-1.com,dnspod,99999,2cc4e0f31e9a1020ff3577dcd6876666,on,测试创建证书<br>
+                                            Ps:<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;on: 创建泛域名证书, off: 不创建泛域名证书<br>
+                                            &nbsp;&nbsp;&nbsp;&nbsp;一个域名一行，一次最多50行
+                                        </blockquote>
+                                        <textarea name="batchCreateSSL" class="layui-textarea"
+                                                  placeholder="域名,DNS解析商,API_ID,API_TOKEN,on,备注(选填)" required
+                                                  rows="10" lay-verify="batchCreateContent"></textarea>
+                                        <br>
+                                        <button type="button" class="layui-btn" lay-submit=""
+                                                lay-filter="batchFormSubmit">立即提交
+                                        </button>
+                                        <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block js %}
+    <script>
+        {#$("#menuSSL").addClass("layui-this");#}
+        {#$("#menuCreateSslCert").addClass("layui-this");#}
+        $("#menuIndex").addClass("layui-this");
+    </script>
+
+    <script>
+        // 校验域名格式
+        function verify_domain(domain) {
+            var regStr = "^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\\.[a-zA-Z]{2,})+$";
+            var re = new RegExp(regStr);
+            return !!re.exec(domain);
+        }
+    </script>
+
+    <script>
+        layui.use(['form', 'layedit', 'laydate'], function () {
+            var form = layui.form
+                , layer = layui.layer;
+
+            // 提交时验证是否选择了DNS厂商，验证域名的输入框中的字符数量是否小于3
+            form.verify({
+                verifySelectDns: function (value) {
+                    if (value === "") {
+                        return "请选择DNS厂商"
+                    }
+                },
+                domain: function (value) {
+                    if (value.length < 3) {
+                        return "你确定输的是域名？"
+                    } else if (!verify_domain(value)) {
+                        return "域名格式不正确"
+                    }
+                }
+            });
+
+            //监听指定开关
+            form.on('switch(switchOpen)', function (data) {
+                layer.tips('温馨提示：默认创建泛域名证书; 关闭时，只创建单域名证书。', data.othis);
+            });
+
+            {#监听select选择框#}
+            form.on('select(DNS)', function (data) {
+                if (!data.value) {
+                    $("#account1").hide();
+                    $("#account2").hide();
+                } else if (data.value === "dnspod") {
+                    $("#account1").show();
+                    $("#account2").show();
+                    $("#account1 label").text("ID");
+                    $("#account2 label").text("Token");
+                } else if (data.value === "cloudflare") {
+                    $("#account1").show();
+                    $("#account2").show();
+                    $("#account1 label").text("Key");
+                    $("#account2 label").text("Email");
+                } else if (data.value === "aliyun") {
+                    $("#account1").show();
+                    $("#account2").show();
+                    $("#account1 label").text("Key");
+                    $("#account2 label").text("Secret");
+                }
+            });
+
+            //监听提交
+            form.on('submit(formSubmit)', function (data) {
+                {#layer.alert(JSON.stringify(data.field), {#}
+                {#        title: '最终的提交信息'#}
+                {#    }#}
+                {#);#}
+                (data.field)['csrfmiddlewaretoken'] = "{{ csrf_token }}";
+                execCreateSSL(data.field);
+            });
+
+            // 验证是否为空
+            form.verify({
+                batchCreateContent: function (value) {
+                    if (value === "") {
+                        return "你确定不填点什么？"
+                    }
+                },
+            });
+            // 批量创建 监听提交
+            form.on('submit(batchFormSubmit)', function (data) {
+                (data.field)['csrfmiddlewaretoken'] = "{{ csrf_token }}";
+                batchCreateSSL(data.field);
+            });
+        });
+    </script>
+
+    <script>
+        // 创建ssl证书
+        function execCreateSSL(data) {
+            var url = "{% url 'ssl_cert:create' %}";
+            $.post(url, data, function (data) {
+                if (data['status'] === "success") {
+                    layer.msg("证书创建中,请稍后...");
+                    document.getElementById("createSSLForm").reset();
+                } else {
+                    layer.msg(data["message"]);
+                }
+            })
+        }
+
+        // 批量创建ssl证书
+        function batchCreateSSL(data) {
+            var url = "{% url 'ssl_cert:batch_create' %}";
+            $.post(url, data, function (callback) {
+                if (callback['status'] === "success") {
+                    layer.msg("开始创建证书，请稍后...")
+                } else if (callback['status'] === "max_limit") {
+                    layer.msg("一次最多为50个域名创建证书")
+                } else if (callback['status'] === "incorrect") {
+                    layer.alert("格式不正确: <br>" + callback['message'])
+                } else if (callback['status'] === "exist") {
+                    layer.alert("域名已存在: " + callback['message'])
+                } else if (callback['status'] === "not exist") {
+                    layer.alert("DNS不存在: " + callback['message'])
+                } else {
+                    layer.alert("未知异常，请检查")
+                }
+            })
+
+        }
+    </script>
+
+{% endblock %}

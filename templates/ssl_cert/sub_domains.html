@@ -1,0 +1,113 @@
+{% extends 'base-menu.html' %}
+
+{% load static %}
+{% load remaining_days_tags %}
+
+{% block content %}
+    <input hidden name="domain" value="{{ domain }}">
+    <div class="layui-container">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md12">
+                <div class="fly-panel" style="min-height: 600px">
+                    <div class="fly-panel-title">
+                        <h3>域名: {{ domain }} &nbsp;&nbsp;
+                            <a href="javascript:void(0)">
+                                <i class="layui-icon layui-icon-refresh-3" style="color: #009688;"
+                                   onclick="syncSubDomains()">
+                                </i>
+                            </a>
+                        </h3>
+                    </div>
+                    <div class="fly-panel-main">
+                        <table class="layui-table">
+                            <colgroup>
+                                <col width="40">
+                                <col width="60">
+                                <col>
+                            </colgroup>
+                            <thead>
+                            <tr>
+                                <th style="text-align: center">ID</th>
+                                <th style="text-align: center">协议</th>
+                                <th style="text-align: center">子域名</th>
+                                <th style="text-align: center">记录类型</th>
+                                <th style="text-align: center">记录值</th>
+                                <th style="text-align: center">开始日期</th>
+                                <th style="text-align: center">结束日期</th>
+                                <th style="text-align: center">剩余天数</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in sub_domains_list %}
+                                <tr style="text-align: center">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ item.protocol }}</td>
+                                    <td>{{ item.sub_domain }}</td>
+                                    <td>{{ item.record_type }}</td>
+                                    <td>{{ item.record_value }}</td>
+                                    <td>{% if item.start_date %}{{ item.start_date|date:"Y-m-d" }}{% else %}
+                                        {{ "" }}{% endif %}</td>
+                                    <td>{% if item.expire_date %}{{ item.expire_date|date:"Y-m-d" }}{% else %}
+                                        {{ "" }}{% endif %}</td>
+                                    <td>{% remaining_days item.expire_date|date:'Y-m-d H:i:s' %}</td>
+                                </tr>
+                            {% empty %}
+                                <tr style="text-align: center">
+                                    <td>无</td>
+                                    <td>无</td>
+                                    <td>无</td>
+                                    <td>无</td>
+                                    <td>无</td>
+                                    <td>无</td>
+                                    <td>无</td>
+                                    <td>无</td>
+                                </tr>
+                            {% endfor %}
+                            {#                                <tr>#}
+                            {#                                    <td>贤心</td>#}
+                            {#                                    <td>2016-11-29</td>#}
+                            {#                                    <td>人生就像是一场修行</td>#}
+                            {#                                    <td>贤心</td>#}
+                            {#                                    <td>2016-11-29</td>#}
+                            {#                                    <td>人生就像是一场修行</td>#}
+                            {#                                    <td>2016-11-29</td>#}
+                            {#                                </tr>#}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        $("#menuIndex").addClass("layui-this");
+    </script>
+
+    <script>
+        // 同步子域名
+        function syncSubDomains() {
+            var domain = $("input").val();
+            var url = "{% url 'ssl_cert:sync_sub_domains' %}";
+            var data = {
+                "domain": domain,
+                "csrfmiddlewaretoken": "{{ csrf_token }}",
+            };
+            layer.load(0, {shade: false});          // loading 加载层。0代表加载的风格，支持0-2
+            $.post(url, data, function (result) {
+                layer.closeAll('loading');          // 关闭loading
+                if (result["status"] === "success") {
+                    layer.msg("子域名同步成功", {
+                        end: function () {
+                            window.location.reload();
+                        }
+                    });
+                } else if (result["status"] === "failed") {
+                    layer.msg("每次同步间隔两分钟")
+                }
+            })
+        }
+    </script>
+{% endblock %}

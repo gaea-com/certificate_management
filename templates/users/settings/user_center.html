@@ -1,0 +1,282 @@
+{% extends 'users/settings/base-settings.html' %}
+
+{% load static %}
+
+{% block css %}
+{% endblock %}
+
+{% block settings_content %}
+    <div class="layui-container fly-marginTop fly-user-main">
+        <div class="fly-panel fly-panel-user" pad20>
+            <div class="layui-tab layui-tab-brief" lay-filter="user">
+                <ul class="layui-tab-title" id="LAY_mine">
+                    <li data-type="mine-jie" lay-id="index" class="layui-this">用户管理</li>
+                </ul>
+                <div class="layui-tab-content" style="padding: 10px 0;">
+                    <div class="layui-btn-group btnGroup">
+                        <button type="button" id="btnCreate" class="layui-btn layui-btn-sm">
+                            <i class="layui-icon">&#xe608;</i>新增
+                        </button>
+                        <button type="button" id="btnDelete" class="layui-btn layui-btn-sm" data-type="batchDelete">
+                            <i class="layui-icon">&#xe640;</i>删除
+                        </button>
+                        {#                        <button type="button" id="btnEnable" class="layui-btn layui-btn-sm">#}
+                        {#                            <i class="layui-icon">&#xe605;</i>启用#}
+                        {#                        </button>#}
+                        {#                        <button type="button" id="btnDisable" class="layui-btn layui-btn-sm">#}
+                        {#                            <i class="layui-icon">&#x1007;</i>禁用#}
+                        {#                        </button>#}
+                    </div>
+
+                    <div class="userSearchTable" style="float: right">
+                        <div class="layui-inline">
+                            <input class="layui-input" name="id" id="userTableReload" autocomplete="off"
+                                   placeholder="用户名 / 邮箱">
+                        </div>
+                        <button class="layui-btn" data-type="reload">搜索</button>
+                    </div>
+                    <br>
+
+                    <table class="layui-hide" id="userTable" lay-filter="userFilter"></table>
+
+                    <script type="text/html" id="barUser">
+                        {#授权按钮，此功能未启用#}
+                        {#<a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="authorization"><i#}
+                        {#        class="layui-icon">&#xe716;</i></a>#}
+                        <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="password"><i class="layui-icon">&#xe673;</i></a>
+                        <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="delete"><i class="layui-icon">&#xe640;</i></a>
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        $(function () {
+            $(".fly-marginTop ul li:first").addClass("layui-this");
+        })
+    </script>
+
+    <script>
+        // 自定义字符格式化
+        // 使用方法: var a = "abcd {0},{}".format('中', '国'); console.log(a)
+        String.prototype.format = function () {
+            if (arguments.length === 0) return this;
+            var param = arguments[0], str = this;
+            if (typeof (param) === 'object') {
+                for (var key in param)
+                    str = str.replace(new RegExp("\\{" + key + "\\}", "g"), param[key]);
+                return str;
+            } else {
+                for (var i = 0; i < arguments.length; i++)
+                    str = str.replace(new RegExp("\\{" + i + "\\}", "g"), arguments[i]);
+                return str;
+            }
+        };
+
+        layui.use(['table'], function () {
+            var table = layui.table
+                , form = layui.form;
+
+            table.render({
+                elem: '#userTable'
+                , url: "{% url 'users:user_list' %}"
+                , cellMinWidth: 80
+                , cols: [[
+                    {type: 'numbers'}
+                    , {type: 'checkbox', field: 'id'}
+                    , {field: 'username', title: '用户名', align: 'center'}
+                    , {field: 'email', title: "邮箱", align: 'center', minWidth: 200,}
+                    , {
+                        field: 'is_active', title: '状态', width: 80, align: 'center', templet: function (d) {
+                            if (d.is_active) {
+                                return "启用";
+                            } else {
+                                return "禁用";
+                            }
+                        }
+                    }
+                    // 显示 普通账号和管理员账号，此功能未启用
+                    //, {
+                    //    field: 'is_superuser', title: '类型', width: 120, sort: true, align: 'center',
+                    //    templet: function (d) {
+                    //        if (d.username === "admin") {
+                    //            return '<input type="checkbox" checked name="管理员" lay-skin="switch" lay-text="管理员|普通账号" lay-filter="isSuperuser" disabled>'
+                    //        }
+                    //        if (d.is_superuser) {
+                    //            if (d.username === "{{ request.user }}") {
+                    //                return '<input type="checkbox" checked name="管理员" lay-skin="switch" lay-text="管理员|普通账号" lay-filter="isSuperuser" disabled>'
+                    //            } else {
+                    //                return '<input type="checkbox" checked name="管理员" value="{0}" lay-skin="switch" lay-text="管理员|普通账号" lay-filter="isSuperuser">'.format(d.id)
+                    //            }
+                    //        } else {
+                    //            if (d.username === "{{ request.user }}") {
+                    //                return '<input type="checkbox" name="管理员" lay-skin="switch" lay-text="管理员|普通账号" lay-filter="isSuperuser" disabled>'
+                    //            }
+                    //            return '<input type="checkbox" name="管理员" value="{0}" lay-skin="switch" lay-text="管理员|普通账号" lay-filter="isSuperuser">'.format(d.id)
+                    //        }
+                    //    }
+                    //}
+                    , {fixed: 'right', title: '操作', align: 'center', toolbar: "#barUser"}
+                ]]
+                , page: true
+                , id: 'userReload'
+            });
+
+            //
+            var $ = layui.$, active = {
+                reload: function () {           // 表格重载（用户搜索）
+                    var userTableReload = $('#userTableReload');
+                    //执行重载
+                    table.reload('userReload', {
+                        page: {
+                            curr: 1 //重新从第 1 页开始
+                        }
+                        , where: {
+                            userSearch: userTableReload.val(),
+                        }
+                    }, 'data');
+                },
+                batchDelete: function () {      // 批量删除
+                    var checkStatus = table.checkStatus('userReload')
+                        , deleteData = checkStatus.data;
+
+                    if (deleteData.length === 0) {
+                        layer.msg("请选择要删除的用户");
+                        return
+                    }
+
+                    // 不能删除 admin 用户，不能自己删除自己的账号
+                    var cur_user = "{{ request.user }}";
+                    for (var i = 0; i < deleteData.length; i++) {
+                        if (deleteData[i]["username"] === "admin") {
+                            layer.msg("不能删除admin用户");
+                            return
+                        } else if (deleteData[i]["username"] === cur_user) {
+                            layer.msg("自己不能删除自己的账号");
+                            return
+                        }
+                    }
+
+                    var data = {
+                        "deleteData": JSON.stringify(deleteData),
+                        "csrfmiddlewaretoken": "{{ csrf_token }}",
+                    };
+                    {#layer.alert(JSON.stringify(data));#}
+                    //
+                    layer.confirm('确定删除吗？', function (index) {
+                        var url = "{% url 'users:delete_user' %}";
+                        $.post(url, data, function (result) {
+                            if (result["status"] === "success") {
+                                layer.alert("用户已删除", {icon: 1}, function (index) {
+                                    window.location.reload();
+                                });
+                            } else {
+                                layer.alert("用户删除失败");
+                            }
+                        });
+                        layer.close(index);
+                    });
+                    //
+                }
+            };
+
+            $('.userSearchTable .layui-btn').on('click', function () {      // 表格重载（用户搜索）
+                var type = $(this).data('type');
+                active[type] ? active[type].call(this) : '';
+            });
+
+            $('.btnGroup .layui-btn').on('click', function () {             // 批量删除
+                var type = $(this).data('type');
+                active[type] ? active[type].call(this) : '';
+            });
+
+            // 将用户设置为管理员或者普通账号接口，此功能未启用
+            // 监听 将用户设置为管理员 操作
+            //form.on('switch(isSuperuser)', function (obj) {
+            //    {#layer.tips(this.value + ' ' + this.name + '：' + obj.elem.checked, obj.othis);#}
+            //    var url = "{% url 'users:is_superuser' %}";
+            //    var data = {
+            //        "id": this.value,
+            //        "csrfmiddlewaretoken": "{{ csrf_token }}",
+            //    };
+            //    $.post(url, data, function (result) {
+            //        if (result["status"] === "success") {
+            //            layer.msg("权限已修改")
+            //        } else {
+            //            layer.alert("未知错误，请检查")
+            //        }
+            //    })
+            //});
+
+
+            // 创建用户
+            $("#btnCreate").click(function () {
+                layer.open({
+                    type: 2,
+                    title: '新增',
+                    shadeClose: true,
+                    maxmin: true,
+                    area: ['500px', '350px'],
+                    content: '{% url 'users:create_user' %}',
+                    end: function () {
+                        //关闭时做的事情
+                        location.reload();
+                    }
+                });
+                // 全屏
+                {#div = layer.open();#}
+                {#layer.full(div)#}
+            });
+
+            //监听工具条（操作列的按钮）
+            table.on('tool(userFilter)', function (obj) {
+                var data = obj.data;
+                if (obj.event === 'authorization') {                // 授权接口，此功能未启用
+                    layer.open({
+                        type: 2,
+                        title: '授权',
+                        shadeClose: true,
+                        maxmin: true,
+                        area: ['550px', '550px'],
+                        content: ["{% url 'users:user_bind_domain' %}" + "?id=" + data.id, "no"],
+                    })
+                } else if (obj.event === "password") {              // 修改密码
+                    layer.open({
+                        type: 2,
+                        title: '修改密码',
+                        shadeClose: false,
+                        maxmin: true,
+                        area: ['500px', '350px'],
+                        content: ["{% url 'users:password_change' %}" + '?id=' + data.id, 'no'],
+                    });
+                } else if (obj.event === 'delete') {                        // 和批量删除共用一个接口，所以格式按批量删除的格式提交
+                    layer.confirm('确定删除吗？', function (index) {
+                        var url = "{% url 'users:delete_user' %}";
+                        var data = {
+                            "deleteData": JSON.stringify([obj.data]),
+                            "csrfmiddlewaretoken": "{{ csrf_token }}",
+                        };
+                        $.post(url, data, function (result) {
+                            if (result["status"]) {
+                                layer.alert('删除成功', {icon: 1});
+                                obj.del();
+                            } else {
+                                layer.alert('删除失败', {icon: 5});
+                            }
+                        });
+                        layer.close(index);
+                    });
+                } else if (obj.event === 'edit') {
+                    layer.alert('编辑行：<br>' + JSON.stringify(data))
+                }
+            });
+
+
+        });
+    </script>
+
+
+{% endblock %}

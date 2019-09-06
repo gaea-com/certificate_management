@@ -1,0 +1,111 @@
+{% extends 'base-menu.html' %}
+
+{% load static %}
+
+{% block content %}
+    <input hidden name="domain" value="{{ domain }}">
+
+    <div class="layui-container">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md12">
+                <div class="fly-panel" style="min-height: 600px">
+                    <div class="fly-panel-title">
+                        <h3>域名: {{ domain }}</h3>
+                    </div>
+                    <div class="fly-panel-main">
+                        <div class="layui-row layui-col-space30">
+                            <div class="layui-col-md6">
+                                <div class="grid-demo" style="display: inline"><strong>证书</strong></div>
+                                <div class="layui-btn-group" style="display: inline; float: right">
+                                    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm btn-clipboard"
+                                            data-clipboard-action="copy" data-clipboard-target="#certContent">复制
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm"
+                                            onclick="downloadFile('cert')">下载
+                                    </button>
+                                </div>
+                                <textarea id="certContent" class="layui-textarea"
+                                          style="overflow:hidden; font-size: 12px; background-color: #E9ECEF"
+                                          readonly>无内容</textarea>
+                            </div>
+                            <div class="layui-col-md6">
+                                <div class="grid-demo" style="display: inline"><strong>KEY</strong></div>
+                                <div class="layui-btn-group" style="display: inline; float: right">
+                                    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm btn-clipboard"
+                                            data-clipboard-action="copy" data-clipboard-target="#keyContent">复制
+                                    </button>
+                                    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm"
+                                            onclick="downloadFile('key')">下载
+                                    </button>
+                                </div>
+                                <textarea id="keyContent" class="layui-textarea"
+                                          style="overflow:hidden; font-size: 12px; background-color: #E9ECEF"
+                                          readonly>无内容</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script src="{% static 'js/plugins/clipboard.min.js' %}"></script>
+    <script>
+        $("#menuIndex").addClass("layui-this");
+    </script>
+
+    <script>
+        // 加载证书及KEY内容
+        $(function () {
+            var url = "{% url 'ssl_cert:view_ssl_cert' %}";
+            var data = {
+                "domain": $("input").val(),
+                "csrfmiddlewaretoken": "{{ csrf_token }}",
+            };
+            $.post(url, data, function (result) {
+                $("#certContent").val(result["cert_content"]);
+                $("#keyContent").val(result["key_content"]);
+
+                // textarea的高度自适应
+                $.each($("textarea"), function (i, n) {
+                        $(n).css("height", n.scrollHeight + "px");
+                    }
+                );
+            })
+        });
+
+        // 复制插件初始化
+        var clipboard = new ClipboardJS('.btn-clipboard');
+        clipboard.on('success', function (e) {
+            layer.msg("已复制");
+        });
+        clipboard.on('error', function (e) {
+            alert("复制失败");
+            console.error('Action:', e.action);
+            console.error('Trigger:', e.trigger);
+        });
+
+
+        // 下载证书链和KEY文件
+        function downloadFile(f_type) {
+            var domain = $("input").val();
+            if (f_type === "cert") {
+                if ($("#certContent").val().length < 10) {
+                    return 1;
+                }
+                var url = "{% url 'ssl_cert:download_file' %}?domain=" + domain + "&f_type=" + f_type
+            } else if (f_type === "key") {
+                if ($("#keyContent").val().length < 10) {
+                    return 1;
+                }
+                var url = "{% url 'ssl_cert:download_file' %}?domain=" + domain + "&f_type=" + f_type
+            } else {
+                alert("download file failed: 请选择域名");
+                return 1;
+            }
+            window.location.href = url;
+        }
+    </script>
+{% endblock %}

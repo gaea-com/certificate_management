@@ -1,0 +1,90 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+    <div class="layui-container fly-marginTop" style="margin-top: 0px">
+        <div class="layui-row">
+            <input type="hidden" value="{{ user.id }}" id="userId"/>
+            <div id="domainTransfer" class="demo-transfer"></div>
+
+            <br><br>
+            <div class="layui-btn-container" style="text-align: center">
+                <button type="button" class="layui-btn" id="btnCancel">重置</button>
+                <button type="button" class="layui-btn" lay-demotransferactive="getData">提交</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        layui.use(['transfer', 'layer', 'util'], function () {
+            var $ = layui.$
+                , transfer = layui.transfer
+                , layer = layui.layer
+                , util = layui.util;
+
+            var all_domain = [];
+            {% for item in all_domains %}
+                all_domain.push({
+                    "value": "{{ item.id }}",
+                    "title": "{{ item.domain }}"
+                });
+            {% endfor %}
+
+            var added_domain_ids = [];
+            {% for item in added_domains %}
+                added_domain_ids.push('{{ item.id }}');
+            {% endfor %}
+
+            //显示搜索框
+            transfer.render({
+                elem: '#domainTransfer',
+                data: all_domain,
+                value: added_domain_ids,
+                title: ['全选（未绑定的域名）', '全选（已绑定的域名）'],
+                showSearch: true,
+                id: "bindDomain",
+            });
+
+            //批量办法定事件
+            util.event('lay-demoTransferActive', {
+                getData: function (othis) {
+                    var getData = transfer.getData('bindDomain'); //获取右侧数据
+                    {#layer.alert(JSON.stringify(getData));#}
+
+                    var userId = $("#userId").val();            // 用户id
+                    var domainIds = [];
+                    for (item in getData) {
+                        domainIds.push(getData[item]["value"]);
+                    }
+
+                    $.ajax({
+                        url: "{% url 'users:user_bind_domain' %}",
+                        data: {
+                            "user_id": userId,
+                            "domain_ids": domainIds,
+                            csrfmiddlewaretoken: '{{ csrf_token }}',
+                        },
+                        dataType: 'json',
+                        type: "POST",
+                        success: function (result) {
+                            if (result["status"]) {
+                                layer.msg("授权成功");
+                            } else {
+                                layer.msg("授权失败");
+                            }
+                        },
+                    })
+                }
+            });
+        });
+    </script>
+    <script>
+        /*点重置刷新页面*/
+        $("#btnCancel").click(function () {
+            window.location.reload();
+        });
+    </script>
+{% endblock %}

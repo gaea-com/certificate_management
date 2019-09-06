@@ -1,0 +1,258 @@
+{% extends 'base-menu.html' %}
+
+{% load static %}
+
+{% block content %}
+    <input hidden name="domain" value="{{ domain }}" id="domainInput">
+    <input hidden name="dns" value="{{ dns }}" id="dnsInput">
+
+    <div class="layui-container">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md12">
+                <div class="fly-panel" style="min-height: 600px">
+                    <div class="fly-panel-title">
+                        <h3 style="display: inline">域名: {{ domain }}</h3>
+                        <div class="layui-inline" style="float: right">
+                            <button type="button" class="layui-btn layui-btn-sm layui-btn-radius" id="addRecord">
+                                添加记录
+                            </button>
+                        </div>
+                    </div>
+                    <div class="fly-panel-main">
+                        <table class="layui-table" id="dnsRecordTable">
+                            <colgroup>
+                                <col width="40">
+                                <col>
+                                <col width="100">
+                                <col width="100">
+                                <col>
+                                <col width="100">
+                                <col width="60">
+                                <col width="60">
+                                <col width="140">
+                            </colgroup>
+                            <thead>
+                            <tr>
+                                <th style="text-align: center">ID</th>
+                                <th style="text-align: center">主机记录</th>
+                                <th style="text-align: center">记录类型</th>
+                                <th style="text-align: center">解析线路</th>
+                                <th style="text-align: center">记录值</th>
+                                <th style="text-align: center">MX优先级</th>
+                                <th style="text-align: center">TTL（秒）</th>
+                                <th style="text-align: center">状态</th>
+                                <th style="text-align: center">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {#<tr style="text-align: center">#}
+                            {#    <td>无</td>#}
+                            {#    <td>无</td>#}
+                            {#    <td>无</td>#}
+                            {#    <td>无</td>#}
+                            {#    <td>无</td>#}
+                            {#    <td>无</td>#}
+                            {#    <td>无</td>#}
+                            {#    <td>#}
+                            {#        <div class="layui-btn-group">#}
+                            {#            <button type="button" class="layui-btn layui-btn-primary layui-btn-xs">修改#}
+                            {#            </button>#}
+                            {#            <button type="button" class="layui-btn layui-btn-primary layui-btn-xs">删除#}
+                            {#            </button>#}
+                            {#            <button type="button" class="layui-btn layui-btn-primary layui-btn-xs">暂停#}
+                            {#            </button>#}
+                            {#        </div>#}
+                            {#    </td>#}
+                            {#</tr>#}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        $("#menuIndex").addClass("layui-this");
+    </script>
+
+    <script>
+        layui.use('layer', function () {
+            var layer = layui.layer;
+
+            // 加载子域名
+            $(function () {
+                layer.load(0, {shade: false});          // loading 加载层。0代表加载的风格，支持0-2
+                var domain = $("#domainInput").val();
+                var url = "{% url 'ssl_cert:dns' %}";
+                var data = {
+                    "domain": domain,
+                    "csrfmiddlewaretoken": "{{ csrf_token }}",
+                };
+                $.post(url, data, function (result) {
+                    layer.closeAll('loading');          // 关闭loading 加载层
+                    if (result["record_list"].length > 0) {
+                        var record_list = result["record_list"];
+                        for (var i = 0; i < record_list.length; i++) {
+                            var disableOrEnable = record_list[i]["status"] === "正常" ? "暂停" : "启用";
+                            var line = record_list[i]["line"] ? record_list[i]["line"] : "";
+                            var mx = record_list[i]["mx"] === "0" ? "-" : record_list[i]["mx"];
+
+                            var disableButton = "";
+                            var dns = $("#dnsInput").val();
+                            if (dns !== "cloudflare") {
+                                var disableButton = '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" onclick="setRecordStatus(this);">' + disableOrEnable + '</button>';
+                            }
+                            var tr = '<tr style="text-align: center">'
+                                + "<td>" + (parseInt(i) + 1) + "</td>"
+                                + "<td>" + record_list[i]["name"].split("." + domain)[0] + "</td>"
+                                + "<td>" + record_list[i]["type"] + "</td>"
+                                + "<td>" + line + "</td>"
+                                + "<td>" + record_list[i]["value"] + "</td>"
+                                + "<td>" + mx + "</td>"
+                                + "<td>" + record_list[i]["ttl"] + "</td>"
+                                + "<td>" + record_list[i]["status"] + "</td>"
+                                + '<td>' + '<div class="layui-btn-group">'
+                                + '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" onclick="modifyRecord(this);">修改</button>'
+                                + disableButton
+                                + '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" onclick="deleteRecord(this);">删除</button>'
+                                + '</div>' + '</td>' + '</tr>';
+
+                            // 在table最后面添加一行
+                            $("#dnsRecordTable").append(tr);
+                        }
+                    } else {
+                        var tr = '<tr style="text-align: center">' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>无</td>' +
+                            '<td>' +
+                            '    <div class="layui-btn-group">' +
+                            '        <button type="button" class="layui-btn layui-btn-primary layui-btn-xs">修改</button>' +
+                            '        <button type="button" class="layui-btn layui-btn-primary layui-btn-xs">暂停</button>' +
+                            '        <button type="button" class="layui-btn layui-btn-primary layui-btn-xs">删除</button>' +
+                            '    </div>' +
+                            '</td>' + '</tr>';
+                        $("#dnsRecordTable").append(tr);
+                    }
+                })
+            });
+        });
+    </script>
+    <script>
+        // 添加记录
+        $("#addRecord").click(function () {
+            var domain = $("#domainInput").val();
+            layer.open({
+                type: 2,
+                title: '添加记录',
+                shadeClose: true,
+                maxmin: true,
+                area: ['550px', '450px'],
+                content: ["{% url 'ssl_cert:add_record' %}?domain=" + domain],
+                end: function () {
+                    window.location.reload();
+                },
+            })
+        });
+
+        // 修改记录
+        function modifyRecord(obj) {
+            var thisObj = $(obj);
+            var domain = $("#domainInput").val();
+            var trObj = thisObj.parent().parent().parent();
+            var name = trObj.find("td:eq(1)").text();       // eq()索引是从0开始计算
+            var type = trObj.find("td:eq(2)").text();
+            var line = trObj.find("td:eq(3)").text();
+            var value = trObj.find("td:eq(4)").text();
+            var mx = trObj.find("td:eq(5)").text();
+            var ttl = trObj.find("td:eq(6)").text();
+
+            layer.open({
+                type: 2,
+                title: '修改记录',
+                shadeClose: true,
+                maxmin: true,
+                area: ['550px', '450px'],
+                content: ["{% url 'ssl_cert:modify_record' %}?domain=" + domain + "&name=" + name + "&type=" + type + "&line=" + line + "&value=" + value + "&mx=" + mx + "&ttl=" + ttl],
+                end: function () {
+                    window.location.reload();
+                }
+            })
+        }
+
+        // 暂停解析
+        function setRecordStatus(obj) {
+            var domain = $("#domainInput").val();
+            var thisObj = $(obj);
+            var trObj = thisObj.parent().parent().parent();
+            var name = trObj.find("td:eq(1)").text();       // eq()索引是从0开始计算
+            var status = trObj.find("td:eq(7)").text();
+
+            var url = "{% url 'ssl_cert:set_record_status' %}";
+            var data = {
+                "domain": domain,
+                "name": name,
+                "status": status === "正常" ? "disable" : "enable",
+                "csrfmiddlewaretoken": "{{ csrf_token }}",
+            };
+
+            layer.load(0, {shade: false}); // loading 加载层, 0代表加载的风格，支持0-2
+            $.post(url, data, function (result) {
+                layer.closeAll('loading');  // 关闭loading 加载层
+                if (result["status"] === "success") {
+                    layer.alert("操作成功", {
+                        icon: 1, end: function () {
+                            window.location.reload();
+                        }
+                    });
+                } else {
+                    layer.alert("操作失败", {icon: 2});
+                }
+            });
+        }
+
+        // 删除记录
+        function deleteRecord(obj) {
+            var domain = $("#domainInput").val();
+            var thisObj = $(obj);
+            var trObj = thisObj.parent().parent().parent();
+            var name = trObj.find("td:eq(1)").text();       // eq()索引是从0开始计算
+
+            var url = "{% url 'ssl_cert:delete_record' %}";
+            var data = {
+                "domain": domain,
+                "name": name,
+                "csrfmiddlewaretoken": "{{ csrf_token }}",
+            };
+
+            layer.confirm("确定删除 " + name + " 记录吗?", {btn: ["确定", "取消"]},
+                function () {
+                    layer.load(0, {shade: false}); // loading 加载层, 0代表加载的风格，支持0-2
+                    $.post(url, data, function (result) {
+                        layer.closeAll('loading');  // 关闭loading 加载层
+                        if (result["status"] === "success") {
+                            layer.alert("删除成功", {
+                                icon: 1, end: function () {
+                                    window.location.reload();
+                                }
+                            });
+                        } else {
+                            layer.alert("删除失败", {icon: 2});
+                        }
+                    })
+                },
+                function () {
+                    // 取消按钮，不需任何操作
+                }
+            );
+
+        }
+    </script>
+{% endblock %}

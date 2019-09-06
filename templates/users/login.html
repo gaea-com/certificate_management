@@ -1,0 +1,135 @@
+{% extends 'bash-head-footer.html' %}
+
+{% load static %}
+
+{% block css %}
+    <style>
+        .alert {
+            position: relative;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .alert-success {
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+            color: #468847;
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+    <div class="layui-container fly-marginTop">
+        <div class="fly-panel fly-panel-user" pad20>
+            <div class="layui-tab layui-tab-brief" lay-filter="user">
+                <ul class="layui-tab-title">
+                    <li class="layui-this">登入</li>
+                    <li><a href="{% url 'users:register' %}">注册</a></li>
+                </ul>
+                <div class="layui-form layui-tab-content" id="LAY_ucm" style="padding: 20px 0;">
+                    <div class="layui-tab-item layui-show">
+                        <div class="layui-form layui-form-pane">
+
+                            {% if msg %}
+                                {% if status %}
+                                    <!-- 注册成功时或者账号激活成功时 显示样式-->
+                                    <div class="alert alert-success" style="min-width: 23%; display: inline-block !important;">
+                                        {{ msg }}
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-danger" style="min-width: 23%; display: inline-block !important;">
+                                        {{ msg }}
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+
+                            <form method="post" action="{% url 'users:login' %}">{% csrf_token %}
+                                <div class="layui-form-item">
+                                    <label for="L_email" class="layui-form-label">用户名</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" id="L_email" name="username" required lay-verify="required"
+                                               autocomplete="off" class="layui-input" value="{{ username }}"
+                                               placeholder="用户名">
+                                    </div>
+                                </div>
+                                <div class="layui-form-item">
+                                    <label for="L_pass" class="layui-form-label">密码</label>
+                                    <div class="layui-input-inline">
+                                        <input type="password" id="L_pass" name="password" required
+                                               lay-verify="required" autocomplete="off" class="layui-input"
+                                               placeholder="密码">
+                                    </div>
+                                </div>
+
+                                <div class="layui-form-item">
+                                    <label for="L_vercode" class="layui-form-label">验证码</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" id="id_captcha_1" name="captcha_1" required
+                                               lay-verify="required"
+                                               placeholder="验证码" autocomplete="off" class="layui-input">
+                                    </div>
+                                    <div class="layui-form-mid">
+                                        <span>
+			                                <img src="{{ image_url }}" class="captcha" alt="captcha">
+                                            <input id="id_captcha_0" name="captcha_0" type="hidden"
+                                                   value="{{ hashkey }}">
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="layui-form-item">
+                                    {#                                    <button class="layui-btn" lay-filter="*" lay-submit>立即登录</button>#}
+                                    <button class="layui-btn" type="submit">立即登录</button>
+                                    <input type="hidden" name="next" value="{{ next }}">
+                                    {#                                    <span style="padding-left:20px;">#}
+                                    {#                                        <a href="forget.html">忘记密码？</a>#}
+                                    {#                                    </span>#}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block js %}
+    <script>
+        //更新验证码图片ajax
+        $("img.captcha").click(function () {
+            $.getJSON("{% url 'captcha-refresh' %}", function (data) {
+                $("img.captcha").attr("src", data.image_url);
+                $("#id_captcha_0").attr("value", data.key);
+            });
+        });
+    </script>
+    {#    <script>#}
+    {#        $("#id_captcha_1").keyup(function () {    //验证码输入验证ajax#}
+    {#            var response = $('#id_captcha_1').val();#}
+    {#            var hashkey = $('#id_captcha_0').val();#}
+    {#            json_data = {#}
+    {#                'response': response,#}
+    {#                'hashkey': hashkey#}
+    {#            };#}
+    {#            $.getJSON("{% url 'ajax_captcha' %}", json_data, function (data) {#}
+    {#                $("span.captcha_status").remove();#}
+    {#                if (data.status) {#}
+    {#                    $(".next-captcha").text("验证成功");#}
+    {#$("#id_captcha_1").after('<span class="captcha_status">验证成功</span>');#}
+    {#                } else {#}
+    {#                    $(".next-captcha").text("验证失败");#}
+    {#$("#id_captcha_1").after('<span class="captcha_status">验证失败</span>');#}
+    {#                }#}
+    {#            });#}
+    {#        });#}
+    {#    </script>#}
+{% endblock %}
