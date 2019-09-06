@@ -23,9 +23,9 @@ services:
         sed -i '/gzip  on.*/a\    gzip_comp_level 6;' /etc/nginx/nginx.conf
         sed -i '/gzip_comp_level.*/a\    gzip_http_version 1.1;' /etc/nginx/nginx.conf
         sed -i '/gzip_comp_level.*/a\    gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;' /etc/nginx/nginx.conf
-        sed -i 's/{{ WEB }}/web/g' /etc/nginx/conf.d/nginx_cert.conf
+        sed -i 's/{{ WEB }}/django/g' /etc/nginx/conf.d/ssl_cert.conf
         nginx -g 'daemon off;'
-  web:
+  django:
     image: gaeamobile/certmanger:latest
     environment:
       - DB_NAME=ssl_cert              # 数据库名称, 默认: ssl_cert
