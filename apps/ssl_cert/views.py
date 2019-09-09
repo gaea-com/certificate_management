@@ -481,6 +481,7 @@ class DeleteSSLCertView(LoginRequiredMixin, View):
         pk = request.POST.get("id")
         queryset = Domain.objects.filter(id=pk)
         domain = queryset.values()[0]["domain"]
+
         # extensive_domain_open = queryset.values()[0]["extensive_domain"]
         # dns = queryset.values()[0]["dns"]
         # account = eval(queryset.values()[0]["dns_account"])
@@ -493,6 +494,7 @@ class DeleteSSLCertView(LoginRequiredMixin, View):
         domain_dir = os.path.join(CERT_DIR, domain)
         if os.path.isdir(domain_dir):
             shutil.rmtree(domain_dir)  # 删除证书目录
+            log.info(F"{domain_dir} 目录已删除")
 
         queryset.delete()  # 删除数据库中的域名记录
         log.info(F"{domain} deleted")
@@ -510,35 +512,46 @@ class SyncSubDomainView(LoginRequiredMixin, View):
 
     def post(self, request):
         user = request.user.username
+        domain = request.POST.get('domain')
         try:
-            SubSyncLimit.objects.get(user=user)  # 查看表中是否存在此用户，不存在则报异常
-            if SubSyncLimit.objects.filter(user=user, sync_time__lt=datetime.now()).count() > 0:
-                SubSyncLimit.objects.update(user=user, sync_time=(datetime.now() + timedelta(minutes=2)))
+            SubSyncLimit.objects.get(user=user, domain=domain)  # 查看表中是否存在此用户，不存在则报异常
+            if SubSyncLimit.objects.filter(user=user, domain=domain, sync_time__lt=datetime.now()).count() > 0:
+                SubSyncLimit.objects.update(user=user, domain=domain, sync_time=(datetime.now() + timedelta(minutes=2)))
             else:
                 return JsonResponse({"status": "failed", "msg": "每次同步间隔2分钟"})
         except SubSyncLimit.DoesNotExist:
-            SubSyncLimit.objects.create(user=user, sync_time=(datetime.now() + timedelta(minutes=2))).save()
+            SubSyncLimit.objects.create(user=user, domain=domain, sync_time=(datetime.now() + timedelta(minutes=2))).save()
 
-        domain = request.POST.get('domain')
         domain_queryset = Domain.objects.filter(domain=domain)
         dns = domain_queryset.values()[0]["dns"]
         account = eval(domain_queryset.values()[0]["dns_account"])
         domain_classify = DomainClassify(domain, dns, account)
         https, http = domain_classify.https_http_list()
         if https or http:
-            # queryset = SubDomains.objects.filter(domain=queryset[0])
             sub_domain_queryset = SubDomains.objects.filter(sub_domain__iendswith=domain)
             sub_domain_queryset.delete()
             for item in https:
-                sub_domain_queryset.create(
-                    protocol="https",
-                    sub_domain=item["name"],
-                    record_type=item["type"],
-                    record_value=item["value"],
-                    start_date=item["start_date"],
-                    expire_date=item["expire_date"],
-                    domain=domain_queryset[0]
-                )
+                if "verify_https_msg" in item:
+                    sub_domain_queryset.create(
+                        protocol="https",
+                        sub_domain=item["name"],
+                        record_type=item["type"],
+                        record_value=item["value"],
+                        start_date=item["start_date"],
+                        expire_date=item["expire_date"],
+                        comment=item["verify_https_msg"],
+                        domain=domain_queryset[0]
+                    )
+                else:
+                    sub_domain_queryset.create(
+                        protocol="https",
+                        sub_domain=item["name"],
+                        record_type=item["type"],
+                        record_value=item["value"],
+                        start_date=item["start_date"],
+                        expire_date=item["expire_date"],
+                        domain=domain_queryset[0]
+                    )
 
             for item in http:
                 sub_domain_queryset.create(

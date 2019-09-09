@@ -33,7 +33,7 @@ class Domain(models.Model):
     create_time = models.DateTimeField(verbose_name="创建时间", auto_now_add=True)
     start_date = models.DateTimeField(verbose_name='开始日期', default=datetime.datetime.now)
     expire_date = models.DateTimeField(verbose_name='过期日期',
-                                    default=(datetime.datetime.now() + datetime.timedelta(days=90)))
+                                       default=(datetime.datetime.now() + datetime.timedelta(days=90)))
     dns = models.CharField(verbose_name="DNS解析商", max_length=20, choices=dns_list)
     dns_account = models.CharField(verbose_name="DNS API账号", max_length=150)
     comment = models.TextField(verbose_name="备注", max_length=200, null=True, blank=True)
@@ -117,6 +117,7 @@ class SubDomains(models.Model):
     record_value = models.CharField(verbose_name="记录值", max_length=198)
     start_date = models.DateTimeField(verbose_name="开始日期", blank=True, null=True)
     expire_date = models.DateTimeField(verbose_name="过期日期", blank=True, null=True)
+    comment = models.CharField(verbose_name="备注", max_length=50, blank=True, null=True)
     domain = models.ForeignKey(Domain, on_delete=models.CASCADE, verbose_name="主域名")
 
     class Meta:
@@ -130,6 +131,7 @@ class SubSyncLimit(models.Model):
     每次同步间隔 2 分钟
     """
     user = models.CharField(verbose_name="用户名", max_length=50)
+    domain = models.CharField(verbose_name="域名", max_length=100)
     sync_time = models.DateTimeField(verbose_name="同步时间", default=datetime.datetime.now)
 
     class Meta:

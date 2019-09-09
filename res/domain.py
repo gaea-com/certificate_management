@@ -13,69 +13,65 @@ from res.utils.DNS import QueryDNSResolver
 
 class VerifyHttps(object):
     """
-    验证传进来的域名是否有证书，如果没有，刚解析此域名，对解析的地址逐个验证是否有证书
+    检查域名是否是https
     """
 
     def __init__(self, domain: str):
-        self.domain = domain.strip()
+        # 如果是 @.aa.com域名，则去掉 @.
+        self.domain = ''.join(domain.strip().split("@.")[1]) if "@" in domain.strip() else domain.strip()
 
     def get_ssl_date(self):
-        start_date, expire_date = self.exec_cmd(self.domain)
-        if expire_date:
-            return start_date, expire_date
+        output = self.cmd_exec()
+        start_date, expire_date = self.match_date(output)
+        if start_date and expire_date:
+            if self.does_not_match(output):
+                return {"status": True, "start_date": start_date, "expire_date": expire_date,
+                        "verify_https_msg": "域名与证书不匹配"}
+            return {"status": True, "start_date": start_date, "expire_date": expire_date}
         else:
-            # dns_resolver = QueryDNSResolver(self.domain)
-            # address_list = dns_resolver.A_query()
-            # for address in address_list:
-            #     start_date, expire_date = self.exec_cmd(address)
-            #     if expire_date:
-            #         return start_date, expire_date
-            return None, None
+            return {"status": False}
 
-    def exec_cmd(self, domain):
-        domain = domain.strip()
-        domain = ''.join(domain.split("@.")[1]) if "@" in domain else domain
-        cmd = F"curl -lvs https://{domain} --connect-timeout 5"
+    def does_not_match(self, s):
+        m = re.search('does not match', s, re.S)
+        if m:
+            # 表示域名和证书不匹配
+            return True
+        else:
+            return False
+
+    def cmd_exec(self):
+        cmd = F"curl -Ilvs https://{self.domain} --connect-timeout 5"
         result = subprocess.getstatusoutput(cmd)
+        return result[1]
+
+    def match_date(self, s):
         try:
-            m = re.search('start date: (.*?)\n.*?expire date: (.*?)\n', result[1], re.S)
+            m = re.search('start date: (.*?)\n.*?expire date: (.*?)\n', s, re.S)
             start_date = m.group(1)
             expire_date = m.group(2)
-
             # datetime 字符串转时间数组
             start_date = datetime.strptime(start_date, "%b %d %H:%M:%S %Y GMT")
             expire_date = datetime.strptime(expire_date, "%b %d %H:%M:%S %Y GMT")
-
-            # 剩余天数
-            remaining = (expire_date - datetime.now()).days
+            remaining = (expire_date - datetime.now()).days  # 剩余天数
 
             print('*' * 30)
-            print(F'域名: [{self.domain} --> {domain}]')
-            print(F'开始时间: {start_date}')
-            print(F'到期时间: {expire_date}')
-            print(F'剩余时间: {remaining}天')
+            print(F'https: [{self.domain} {start_date} {expire_date}] {remaining}天')
             print('*' * 30)
+
             return start_date, expire_date
-        except AttributeError as e:
+        except AttributeError:
+            # 没有匹配到证书的开始日期和结束日期
             pass
         except Exception:
+            # 未知异常
             print(traceback.print_exc())
-
-        print(F"http: [{self.domain} --> {domain}]")
+        print(F"http: [{self.domain}]")
         return None, None
 
 
-class VerifyHttpsThread(Thread):
-    def __init__(self, domain):
-        super().__init__()
-        self.domain = domain
-
-    def run(self):
-        verify_https = VerifyHttps(self.domain)
-        self.result = verify_https.get_ssl_date()
-
-    def get_result(self):
-        return self.result
+def verify_https(domain):
+    https = VerifyHttps(domain)
+    return https.get_ssl_date()
 
 
 class DomainClassify(object):
@@ -109,73 +105,53 @@ class DomainClassify(object):
         例: ([{},{}], [{},{}])
         """
         # # 线程池，默认30个
-        # sub_domains = self.get_sub_domain()
-        # executor = ThreadPoolExecutor(30)
-        # https, http = [], []
-        # verify_https = VerifyHttps(self.domain)
-        # for i, data in enumerate(executor.map(verify_https, [item["name"] for item in sub_domains])):
-        #     if data[0]:
-        #         sub_domains[i]["start_date"] = data[0]
-        #         sub_domains[i]["expire_date"] = data[1]
-        #         https.append(sub_domains[i])
-        #     else:
-        #         http.append(sub_domains[i])
-        #
-        # return https, http
-
         sub_domains = self.get_sub_domain()
-        max_thread_nums = 30
-        thread_list = []
-        for item in sub_domains:
-            t = VerifyHttpsThread(item["name"])
-            t.start()
-            thread_list.append(t)
-
-            while True:
-                if activeCount() < max_thread_nums:
-                    break
-                time.sleep(0.5)
-
+        executor = ThreadPoolExecutor(30)
         https, http = [], []
-        for i, t in enumerate(thread_list):
-            t.join()
-            while t.isAlive():
-                time.sleep(1)
-
-            start_date, expire_date = t.get_result()
-            if start_date:
-                sub_domains[i]["start_date"] = start_date
-                sub_domains[i]["expire_date"] = expire_date
+        for i, data in enumerate(executor.map(verify_https, [item["name"] for item in sub_domains])):
+            if data["status"]:
+                if "verify_https_msg" in data:
+                    sub_domains[i]["start_date"] = data["start_date"]
+                    sub_domains[i]["expire_date"] = data["expire_date"]
+                    sub_domains[i]["verify_https_msg"] = data["verify_https_msg"]
+                else:
+                    sub_domains[i]["start_date"] = data["start_date"]
+                    sub_domains[i]["expire_date"] = data["expire_date"]
                 https.append(sub_domains[i])
             else:
                 http.append(sub_domains[i])
+
         return https, http
 
 
 if __name__ == "__main__":
-    # print(verify_https(""))
+    # https = VerifyHttps("image4web.castleagegame.com")
+    # output = https.cmd_exec()
+    # print(https.get_ssl_date())
+    #
+    # exit(0)
     import json
 
-    print(time.asctime(time.localtime(time.time())))
-    domain = ""
-    dnspod_account = {
-        "id": "",
-        "key": "",
-    }
-
-    aliyun_account = {
-        "key": "",
-        "secret": "",
-    }
-
+    # print(time.asctime(time.localtime(time.time())))
+    domain = "castleagegame.com"
+    # dnspod_account = {
+    #     "id": "",
+    #     "key": "",
+    # }
+    #
+    # aliyun_account = {
+    #     "key": "",
+    #     "secret": "",
+    # }
+    #
     cloudflare_account = {
-        "key": "",
-        "email": "",
+        "key": "1e288ead274dc71b68f59de9fe0404337be79",
+        "email": "wiki.jiao@gaeamobile-inc.net",
     }
-
-    dns = "dnspod"
-    domain_classify = DomainClassify(domain, dns, dnspod_account)
+    #
+    dns = "cloudflare"
+    domain_classify = DomainClassify(domain, dns, cloudflare_account)
     https, http = domain_classify.https_http_list()
     print(https)
     print(http)
-    print(time.asctime(time.localtime(time.time())))
+    # print(time.asctime(time.localtime(time.time())))

@@ -165,6 +165,14 @@
                                     toEmail(domain);
                                 }
                             },
+                            {
+                                title: "源站IP",
+                                icon: "layui-icon-right",
+                                event: function () {
+                                    var domain = data.domain;
+                                    add_source_ip();
+                                }
+                            },
                         ];
                         return options;
                     })
@@ -298,13 +306,18 @@
             // 接收邮箱
             function toEmail(domain) {
                 layer.open({
-                    type:2,
+                    type: 2,
                     title: '接收通知邮箱',
                     shadeClose: true,
                     maxmin: true,
                     area: ['550px', '350px'],
                     content: ["{% url 'ssl_cert:to_email' %}?domain=" + domain],
                 })
+            }
+
+            // 添加源站IP
+            function add_source_ip() {
+                layer.alert("敬请期待");
             }
         });
     </script>

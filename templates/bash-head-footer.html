@@ -62,7 +62,7 @@
                     </a>
                     <dl class="layui-nav-child">
                         {% if user.is_superuser %}
-                            <dd><a href="{% url 'users:user_center' %}"><i class="layui-icon">&#xe620;</i>基本设置</a></dd>
+                            <dd><a href="{% url 'users:user_center' %}"><i class="layui-icon">&#xe620;</i>设置</a></dd>
                             <hr style="margin: 5px 0;">
                         {% endif %}
                         <dd><a href="{% url 'users:logout' %}" style="text-align: center;">退出</a></dd>

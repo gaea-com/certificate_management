@@ -31,7 +31,7 @@ class SubDomainsAdmin(admin.ModelAdmin):
 
 @admin.register(SubSyncLimit)
 class SubSyncLimitAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "sync_time",)
+    list_display = ("id", "user", "domain", "sync_time",)
     search_fields = ("user",)
 
 

@@ -73,6 +73,7 @@ class Acme(object):
         dns_alias = set_env(self.dns, self.account)
         if self.staging:
             if self.extensive_domain_open:
+                # --force 强制创建或更新
                 cmd = "{}/acme.sh --issue --dns {} -d {} -d {} --staging".format(self.acme_dir, dns_alias, self.domain,
                                                                                  "*." + self.domain)
             else:

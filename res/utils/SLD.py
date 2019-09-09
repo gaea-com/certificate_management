@@ -1,4 +1,9 @@
-import re
+"""
+tieba.baidu.com
+    .com 顶级域名/一级域名
+    baidu.com 二级域名
+    tieba.baidu.com 三级域名
+"""
 
 
 class SLD(object):
@@ -8,6 +13,14 @@ class SLD(object):
 
     def __init__(self, domain: str):
         self.domain = domain.strip()
+
+    def sld(self):
+        suffix = self.reg_match()
+        if len(self.domain.split(suffix)[0].split(".")) == 1:
+            # 说明是二级域名
+            return True
+        else:
+            return False
 
     def reg_match(self):
         domain_suffix = [".com", ".cn", ".com.cn", ".gov", ".net", ".edu.cn", ".net.cn", ".org.cn", ".co.jp", ".gov.cn",
@@ -23,15 +36,10 @@ class SLD(object):
         for suffix in domain_suffix:
             if self.domain.endswith(suffix):
                 suffix_list.append(suffix)
-        suffix = max(suffix_list)
-        if len(self.domain.split(suffix)[0].split(".")) == 1:
-            return True
-        else:
-            return False
+
+        return max(suffix_list)
 
 
 if __name__ == '__main__':
     sld = SLD("baidu.com")
-    # print(sld.is_sld())
-    # print(sld.get_sld())
-    print(sld.reg_match())
+    print(sld.sld())

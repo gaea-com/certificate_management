@@ -57,7 +57,8 @@ def email_table(ssl_status: bool, domain: str, dns: str, https_list: list = None
         t = ""
         now = datetime.now()
         for item in https_list:
-            days = (item["expire_date"] - now).days
+            # days = (item["expire_date"] - now).days
+            days = "域名与证书不匹配" if "verify_https_msg" in item else str((item["expire_date"] - now).days) + " 天"
             t += F"""
                     <tr style="height: 30px">
                         <td style="border: 1px solid #ddd;">https</td>
@@ -65,7 +66,7 @@ def email_table(ssl_status: bool, domain: str, dns: str, https_list: list = None
                         <td style="border: 1px solid #ddd;">{item['type']}</td>
                         <td style="border: 1px solid #ddd;">{item["value"]}</td>
                         <td style="border: 1px solid #ddd;">{item["expire_date"].strftime("%Y-%m-%d")}</td>
-                        <td style="border: 1px solid #ddd;">{days} 天</td>
+                        <td style="border: 1px solid #ddd;">{days}</td>
                     </tr>
             """
         for item in http_list:

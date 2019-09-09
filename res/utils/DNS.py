@@ -1,19 +1,8 @@
-import socket
 from dns import resolver
 
 
-# 获取域名解析出的后端IP列表
-# def get_backend_ip(domain: str) -> list:
-#     ip_list = []
-#     try:
-#         addrs = socket.getaddrinfo(domain.strip(), None)
-#         for item in addrs:
-#             if item[4][0] not in ip_list:
-#                 ip_list.append(item[4][0])
-#     except Exception as e:
-#         print(e)
-#     return ip_list
-
+# TODO 此文件未使用
+# 域名解析列表
 
 class QueryDNSResolver(object):
     """

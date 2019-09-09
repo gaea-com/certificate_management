@@ -300,10 +300,10 @@ class DNSPOD(object):
 
 
 if __name__ == "__main__":
-    domain = "xjqxz.gaeamobile.net"
+    domain = ""
     account = {
-        "id": "35700",
-        "token": "edacfc51d99cde2098aabae9cbc231f1",
+        "id": "",
+        "token": "",
     }
     record_type = "A"
     record_line = "默认"
