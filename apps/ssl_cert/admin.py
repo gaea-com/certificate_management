@@ -25,7 +25,7 @@ class SSLCertContentAdmin(admin.ModelAdmin):
 @admin.register(SubDomains)
 class SubDomainsAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "protocol", "sub_domain", "record_type", "record_value", "start_date", "expire_date", "domain")
+        "id", "protocol", "sub_domain", "record_type", "record_value", "start_date", "expire_date", "comment", "domain")
     search_fields = ("sub_domain", "domain__domain",)
 
 

@@ -133,7 +133,7 @@ if __name__ == "__main__":
     import json
 
     # print(time.asctime(time.localtime(time.time())))
-    domain = "castleagegame.com"
+    domain = ""
     # dnspod_account = {
     #     "id": "",
     #     "key": "",
@@ -145,8 +145,8 @@ if __name__ == "__main__":
     # }
     #
     cloudflare_account = {
-        "key": "1e288ead274dc71b68f59de9fe0404337be79",
-        "email": "wiki.jiao@gaeamobile-inc.net",
+        "key": "",
+        "email": "",
     }
     #
     dns = "cloudflare"
