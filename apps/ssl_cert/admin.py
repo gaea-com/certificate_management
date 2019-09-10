@@ -9,7 +9,7 @@ from .models import Domain, SSLCertContent, SubDomains, SubSyncLimit, ToEmail
 class DomainAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'domain', 'extensive_domain', 'status', 'create_time', 'start_date', 'expire_date', 'dns', 'dns_account',
-        'comment',
+        'comment', "source_ip",
     )
     # list_display = [d.name for d in Domain._meta.get_fields()]
 

@@ -16,6 +16,7 @@ urlpatterns = [
     path('sub_domains/', views.SubDomainsView.as_view(), name="sub_domains"),
     path('dns/', views.DnsView.as_view(), name="dns"),
     path('to_email/', views.ToEmailView.as_view(), name="to_email"),
+    path('source_ip/', views.SourceIPView.as_view(), name="source_ip"),
     path('send_ssl_cert_to_email/', views.SendSSLCertView.as_view(), name="send_ssl_cert_to_email"),
     path('add_record/', views.AddRecordView.as_view(), name="add_record"),
     path('modify_record/', views.ModifyRecordView.as_view(), name="modify_record"),

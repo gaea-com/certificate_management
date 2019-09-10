@@ -170,7 +170,7 @@
                                 icon: "layui-icon-right",
                                 event: function () {
                                     var domain = data.domain;
-                                    add_source_ip();
+                                    add_source_ip(domain);
                                 }
                             },
                         ];
@@ -316,8 +316,15 @@
             }
 
             // 添加源站IP
-            function add_source_ip() {
-                layer.alert("敬请期待");
+            function add_source_ip(domain) {
+                layer.open({
+                    type: 2,
+                    title: domain + ' 源站IP',
+                    shadeClose: true,
+                    maxmin: true,
+                    area: ['550px', '250px'],
+                    content: ["{% url 'ssl_cert:source_ip' %}?domain=" + domain],
+                })
             }
         });
     </script>

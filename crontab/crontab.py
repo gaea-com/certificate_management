@@ -26,8 +26,8 @@ def domain_filter(days):
     查询小于指定天数的域名
     """
     filter_time = datetime.now() + timedelta(days=days)
-    # queryset = Domain.objects.filter(expire_date__lte=filter_time, status="valid")
-    queryset = Domain.objects.filter(expire_date__lte=filter_time)
+    queryset = Domain.objects.filter(expire_date__lte=filter_time, status="valid")
+    # queryset = Domain.objects.filter(expire_date__lte=filter_time)
     return queryset
 
 
@@ -52,17 +52,14 @@ class SSLCertExpiredAlarms(object):
 
     def alarms(self):
         # acme创建的免费证书有效期最多90天，这里过滤有效期100天之内的域名，即所有域名
-        queryset = domain_filter(100)
+        queryset = domain_filter(1000)
         for obj in queryset:
-            main_domain_result = self.main_domain(obj.domain)
+            main_domain_result = self.main_domain(obj.domain, obj.source_ip)
             https_sub_domain = self.https_sub_domain_filter(obj.domain, obj.dns, eval(obj.dns_account))
 
-            # 如果有即将过期的子域名，但主域名不是https，刚从数据库中查询主域名的过期时间
-            if https_sub_domain and not main_domain_result["expire_date"]:
-                main_domain_result = self.main_domain_from_db(obj.domain)
-
+            # 域名与证书不匹配、主域名即将过期、子域名即将过期 发送邮件通知
             if "verify_https_msg" in main_domain_result \
-                    or main_domain_result["expire"] or https_sub_domain:  # 主域名即将过期或者子域名即将过期 发送通知通知
+                    or main_domain_result["expire"] or https_sub_domain:
                 sld = SLD(obj.domain)
                 new_domain = "@." + obj.domain if sld.sld() else obj.domain  # 如果是个二级域名，在发送邮件时，前面加上@
                 email_content = email_table(new_domain, obj.dns, main_domain_result, https_sub_domain)
@@ -70,39 +67,46 @@ class SSLCertExpiredAlarms(object):
                 to_email = to(obj.domain)
                 send_email(subject, email_content, obj.domain, to_email)
 
-    def main_domain(self, domain):
+    def main_domain(self, domain: str, source_ip: str = None):
         """
         检查主域名是否即将过期
+            先检查域名本身是否是https
+            如果不是https, 则看是否有添加源站IP
+            如果有, 则通过源站IP检查证书是否到期
+            如果源站上也没有证书, 则从数据库中查询主域名的过期时间
         """
         verify_https = VerifyHttps(domain)
         result = verify_https.get_ssl_date()
-        if result["status"]:
-            remaining = (result["expire_date"] - datetime.now()).days
-            if "verify_https_msg" in result:
-                if remaining <= self.days:
-                    return {"expire": True, "expire_date": result["expire_date"],
-                            "verify_https_msg": result["verify_https_msg"]}
-                else:
-                    return {"expire": False, "expire_date": result["expire_date"],
-                            "verify_https_msg": result["verify_https_msg"]}
-            if remaining <= self.days:
-                return {"expire": True, "expire_date": result["expire_date"]}
+        if not result["status"]:
+            if source_ip:
+                result = verify_https.get_source_ip_ssl_date(source_ip)
+                if not result["status"]:
+                    result = self.main_domain_from_db(domain)
             else:
-                return {"expire": False, "expire_date": result["expire_date"]}
+                result = self.main_domain_from_db(domain)
+
+        remaining = (result["expire_date"] - datetime.now()).days
+        # True 表示即将过期 # False 表示离过期还有一段时间
+        if "verify_https_msg" in result:
+            if remaining <= self.days:
+                return {"expire": True, "expire_date": result["expire_date"],
+                        "verify_https_msg": result["verify_https_msg"]}
+            else:
+                return {"expire": False, "expire_date": result["expire_date"],
+                        "verify_https_msg": result["verify_https_msg"]}
+        if remaining <= self.days:
+            return {"expire": True, "expire_date": result["expire_date"]}
         else:
-            return {"expire": False, "expire_date": None}
+            return {"expire": False, "expire_date": result["expire_date"]}
 
     def main_domain_from_db(self, domain):
         """
         在数据库查询域名的过期时间
         """
-        # 如果域名不是https，则从数据库中查询域名的过期时间
+        # 从数据库中查询域名的过期时间
         queryset = Domain.objects.filter(domain=domain)
         expire_date = queryset.values()[0]["expire_date"]
-        remaining = (expire_date - datetime.now()).days
-        if remaining <= self.days:
-            return {"expire": True, "expire_date": expire_date}  # True 表示即将过期
-        return {"expire": False, "expire_date": expire_date}  # False 表示离过期还有一段时间
+        return {"expire_date": expire_date}
 
     def https_sub_domain_filter(self, domain, dns, account):
         """
@@ -120,7 +124,6 @@ class SSLCertExpiredAlarms(object):
                 item["expire"] = True
                 new_https_list.append(item)
 
-        # print(F"new https list: {new_https_list}")
         return new_https_list
 
 

@@ -37,6 +37,7 @@ class Domain(models.Model):
     dns = models.CharField(verbose_name="DNS解析商", max_length=20, choices=dns_list)
     dns_account = models.CharField(verbose_name="DNS API账号", max_length=150)
     comment = models.TextField(verbose_name="备注", max_length=200, null=True, blank=True)
+    source_ip = models.CharField(verbose_name="源站IP", max_length=15, null=True, blank=True)
 
     class Meta:
         # 数据库中生成的表名称 默认 app名称 + 下划线 + 类名

@@ -1,0 +1,146 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+
+    <div class="layui-container fly-marginTop">
+        <div class="layui-row">
+            <input hidden name="domain" value="{{ domain }}" id="domainInput">
+
+            <div style="display: inline">
+                {% if source_ip %}
+                    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal layui-btn-disabled">添加源站IP
+                    </button>
+                {% else %}
+                    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addSourceIP();">添加源站IP
+                    </button>
+                {% endif %}
+            </div>
+
+            <table class="layui-table" id="dnsRecordTable">
+                <colgroup>
+                    <col width="70%">
+                    <col>
+                </colgroup>
+                <thead>
+                <tr>
+                    <th style="text-align: center">IP</th>
+                    <th style="text-align: center">操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% if source_ip %}
+                    <tr style="text-align: center">
+                        <td>{{ source_ip }}</td>
+                        <td>
+                            <div class="layui-btn-group">
+                                <button type="button" class="layui-btn layui-btn-primary layui-btn-xs"
+                                        onclick="deleteSourceIP()">删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr style="text-align: center">
+                        <td colspan="2">无</td>
+                    </tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        // getCookie函数
+        function getCookie(name) {
+            var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
+
+            if (arr = document.cookie.match(reg))
+                return unescape(arr[2]);
+            else
+                return null;
+        }
+
+        // DELETE请求需要把csrf设置在header中
+        $(function () {
+            $.ajaxSetup({
+                headers: {"X-CSRFToken": getCookie("csrftoken")}
+            });
+        });
+    </script>
+    <script>
+        layui.use('layer', function () {
+            var layer = layui.layer;
+        });
+
+        //添加源站IP
+        function addSourceIP() {
+            var domain = $("#domainInput").val();
+            var url = "{% url 'ssl_cert:source_ip' %}";
+
+            layer.prompt(
+                {
+                    title: "请输入IP",
+                },
+                function (val, index) {
+                    var data = {
+                        "domain": domain,
+                        "source_ip": val,
+                        "csrfmiddlewaretoken": "{{ csrf_token }}",
+                    };
+                    $.post(url, data, function (result) {
+                        if (result["status"] === "success") {
+                            layer.msg("添加IP添加成功", {
+                                time: 2000,
+                                end: function () {
+                                    layer.close(index);
+                                    location.reload();
+                                }
+                            });
+                        } else if (result["status"] === "failed") {
+                            layer.alert(result["msg"], {icon: 5});
+                        }
+
+                    });
+
+                });
+        }
+
+        // 删除源站IP
+        function deleteSourceIP() {
+            var domain = $("#domainInput").val();
+            var url = "{% url 'ssl_cert:source_ip' %}";
+            var data = {
+                "domain": domain,
+            };
+
+            // DELETE请求，需要把csrf设置为header中
+            $.ajax({
+                url: url,
+                type: "DELETE",
+                dataType: "json",
+                data: data,
+                success: function (result) {
+                    if (result["status"] === "success") {
+                        layer.msg("删除成功", {
+                            time: 2000,
+                            end: function () {
+                                location.reload();
+                            }
+                        })
+                    } else {
+                        layer.alert(result["msg"], {icon: 5});
+                    }
+                },
+                error: function (data, textStatus, errorThrown) {
+                    {#console.log(data);#}
+                    console.log("删除邮箱异常: " + textStatus + " : " + errorThrown);
+                    alert("删除邮箱异常");
+                }
+            })
+        }
+    </script>
+{% endblock %}

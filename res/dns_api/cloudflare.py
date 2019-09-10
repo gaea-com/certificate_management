@@ -14,7 +14,7 @@ class CLOUDFLARE(object):
         self.domain = domain
         self.key = account[dns_api_mode["cloudflare"][0]]
         self.email = account[dns_api_mode["cloudflare"][1]]
-        self.TIMEOUT = 30
+        self.TIMEOUT = 60
         self.second_level_domain = '.'.join(domain.split('.')[-2:])
         self.base_url = "https://api.cloudflare.com/client/v4/zones"
 

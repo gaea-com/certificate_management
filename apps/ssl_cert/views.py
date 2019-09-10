@@ -520,7 +520,8 @@ class SyncSubDomainView(LoginRequiredMixin, View):
             else:
                 return JsonResponse({"status": "failed", "msg": "每次同步间隔2分钟"})
         except SubSyncLimit.DoesNotExist:
-            SubSyncLimit.objects.create(user=user, domain=domain, sync_time=(datetime.now() + timedelta(minutes=2))).save()
+            SubSyncLimit.objects.create(user=user, domain=domain,
+                                        sync_time=(datetime.now() + timedelta(minutes=2))).save()
 
         domain_queryset = Domain.objects.filter(domain=domain)
         dns = domain_queryset.values()[0]["dns"]
@@ -664,6 +665,46 @@ class ToEmailView(LoginRequiredMixin, View):
         if match_email:
             return True
         return False
+
+
+class SourceIPView(LoginRequiredMixin, View):
+    """
+    源站IP
+    """
+
+    def get(self, request):
+        domain = request.GET.get("domain")
+        queryset = Domain.objects.filter(domain=domain)
+        source_ip = queryset.values()[0]["source_ip"]
+        return render(request, 'ssl_cert/source_ip.html', context={"source_ip": source_ip, "domain": domain})
+
+    def post(self, request):
+        """
+        添加源站IP
+        """
+        domain = request.POST.get("domain")
+        source_ip = request.POST.get("source_ip")
+        domain_obj = Domain.objects.get(domain=domain)
+        if domain_obj.status != "valid":
+            return JsonResponse({"status": "failed", "msg": F"域名状态为: {domain_obj.get_status_display()}, 不能执行此操作"})
+
+        domain_obj.source_ip = source_ip
+        domain_obj.save()
+
+        return JsonResponse({"status": "success"})
+
+    def delete(self, request):
+        """
+        删除源站IP
+        """
+        d = QueryDict(request.body)
+        domain = d.get("domain")
+        domain_obj = Domain.objects.get(domain=domain)
+        if domain_obj.status != "valid":
+            return JsonResponse({"status": "failed", "msg": F"域名状态为: {domain_obj.get_status_display()}, 不能执行此操作"})
+        domain_obj.source_ip = ""
+        domain_obj.save()
+        return JsonResponse({"status": "success"})
 
 
 class SendSSLCertView(LoginRequiredMixin, View):

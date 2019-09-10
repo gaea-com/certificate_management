@@ -16,12 +16,25 @@ class VerifyHttps(object):
     检查域名是否是https
     """
 
+    # curl -Ilvs --resolve 'www.zzfeng.xyz:443:180.76.144.106' https://www.zzfeng.xyz
     def __init__(self, domain: str):
         # 如果是 @.aa.com域名，则去掉 @.
         self.domain = ''.join(domain.strip().split("@.")[1]) if "@" in domain.strip() else domain.strip()
 
     def get_ssl_date(self):
         output = self.cmd_exec()
+        start_date, expire_date = self.match_date(output)
+        if start_date and expire_date:
+            if self.does_not_match(output):
+                return {"status": True, "start_date": start_date, "expire_date": expire_date,
+                        "verify_https_msg": "域名与证书不匹配"}
+            return {"status": True, "start_date": start_date, "expire_date": expire_date}
+        else:
+            return {"status": False}
+
+    def get_source_ip_ssl_date(self, source_ip):
+        # 检查源站IP ssl证书日期
+        output = self.cmd_exec2(source_ip)
         start_date, expire_date = self.match_date(output)
         if start_date and expire_date:
             if self.does_not_match(output):
@@ -41,6 +54,12 @@ class VerifyHttps(object):
 
     def cmd_exec(self):
         cmd = F"curl -Ilvs https://{self.domain} --connect-timeout 5"
+        result = subprocess.getstatusoutput(cmd)
+        return result[1]
+
+    def cmd_exec2(self, source_ip):
+        # 检查源站IP ssl证书日期
+        cmd = F"curl -Ilvs --resolve '{self.domain}:443:{source_ip}' https://{self.domain} --connect-timeout 5"
         result = subprocess.getstatusoutput(cmd)
         return result[1]
 
