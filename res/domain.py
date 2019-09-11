@@ -3,12 +3,10 @@ import time
 import subprocess
 import traceback
 from datetime import datetime
-from threading import Thread, activeCount
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from res.dns_api.dnspod import DNSPOD
 from res.dns_api.cloudflare import CLOUDFLARE
 from res.dns_api.aliyun import ALIYUN
-from res.utils.DNS import QueryDNSResolver
 
 
 class VerifyHttps(object):
@@ -112,7 +110,8 @@ class DomainClassify(object):
         dns_list = [DNSPOD, CLOUDFLARE, ALIYUN]  # 此变量没有用到
         cls = eval(self.dns.upper())
         obj = cls(self.domain, self.account)
-        sub_domains = obj.part_sub_domains()
+        # sub_domains = obj.part_sub_domains()
+        sub_domains = obj.sub_domains()
         return sub_domains
 
     def https_http_list(self):

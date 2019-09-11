@@ -27,7 +27,6 @@ def domain_filter(days):
     """
     filter_time = datetime.now() + timedelta(days=days)
     queryset = Domain.objects.filter(expire_date__lte=filter_time, status="valid")
-    # queryset = Domain.objects.filter(expire_date__lte=filter_time)
     return queryset
 
 
@@ -37,6 +36,7 @@ def auto_update_ssl_cert():
     """
     days = 7
     queryset = domain_filter(days)
+    log.info(F"auto update domain: [{queryset.values('domain')}]")
     for obj in queryset:
         ssl_cert = SSLCert(obj.domain, obj.extensive_domain, obj.dns, eval(obj.dns_account))
         ssl_cert.update()
@@ -60,8 +60,10 @@ class SSLCertExpiredAlarms(object):
             # 域名与证书不匹配、主域名即将过期、子域名即将过期 发送邮件通知
             if "verify_https_msg" in main_domain_result \
                     or main_domain_result["expire"] or https_sub_domain:
+                log.info(F"expire alarm main domain: {obj.domain}")
+                log.info(F"expire alarm sub domain: {https_sub_domain}")
                 sld = SLD(obj.domain)
-                new_domain = "@." + obj.domain if sld.sld() else obj.domain  # 如果是个二级域名，在发送邮件时，前面加上@
+                new_domain = "@." + obj.domain if sld.is_sld() else obj.domain  # 如果是个二级域名，在发送邮件时，前面加上@
                 email_content = email_table(new_domain, obj.dns, main_domain_result, https_sub_domain)
                 subject = F"{new_domain} SSL证书过期提醒"
                 to_email = to(obj.domain)

@@ -1,11 +1,10 @@
-import logging
 import requests
-import traceback
 from requests.exceptions import ConnectTimeout
 from apps.ssl_cert.config import dns_api_mode
+from res.utils.SLD import SLD
+from json.decoder import JSONDecodeError
 
 # DnsPod 查询子域名接口
-logger = logging.getLogger('django')
 
 __record_doc__ = """
     "types": [
@@ -57,100 +56,86 @@ __record_doc__ = """
 
 class DNSPOD(object):
     def __init__(self, domain: str, account: dict):
-        # self.domain = domain
+        self.domain = domain.strip()
         self.id_ = account[dns_api_mode["dnspod"][0]]
         self.token = account[dns_api_mode["dnspod"][1]]
-        self.TIMEOUT = 10
-        if domain.endswith(".com.cn") or \
-                domain.endswith(".net.cn") or \
-                domain.endswith(".ac.cn"):
-            self.prefix_domain = '.'.join(domain.split(".")[0:-3])
-            self.second_level_domain = '.'.join(domain.split('.')[-3:])
-        else:
-            self.prefix_domain = '.'.join(domain.split(".")[0:-2])
-            self.second_level_domain = '.'.join(domain.split('.')[-2:])
+        self.TIMEOUT = 30
+        sld = SLD(self.domain)
+        self.sub, self.sld = sld.domain_cut()
 
-    def get_record_list(self) -> list:
+    def request(self, url: str, **kwargs) -> dict:
         """
-        查询域名所有的记录
+        执行请求
         """
+        kwargs.update({
+            "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 key以逗号分割
+            "format": "json",
+            "domain": self.sld,
+        })
         try:
-            URL = "https://dnsapi.cn/Record.List"
-            payload = {
-                "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 key以逗号分割
-                "format": "json",
-                "domain": self.second_level_domain,
-                "offset": 0,
-                "length": 10000,
-            }
-            r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
+            r = requests.post(url, data=kwargs, timeout=self.TIMEOUT)
             if r.json()["status"]["code"] == "1":
-                return r
+                return r.json()
             else:
-                logger.error(F"Failed to query record list: {r.text}")
-                return None
-        except ConnectTimeout:
-            logger.error(F"query record failed: {self.second_level_domain}")
+                print(F"[{self.sld}] request error: {r.text}")
+                return {"status": {"code": 0}}
+        except ConnectTimeout as e:
+            print(F"[{self.sld}] request timeout: {e}")
+            return {"status": {"code": 0}}
+        except JSONDecodeError as e:
+            print(F"[{self.sld}] request login failed: {e}")
+            return {"status": {"code": 0}}
 
-    def get_record_id(self, sub_domain: str) -> int:
+    def record_list(self, offset: int = 0, length: int = 3000) -> dict:
         """
-        查询记录对应的id
+        查询所有记录
         """
-        sub_domain = sub_domain.lower()
-        request = self.get_record_list()
-        if request:
-            records = request.json()['records']
-            if self.prefix_domain:
-                sub_domain = ''.join([sub_domain, ".", self.prefix_domain])
-            record_id = ','.join([record["id"] for record in records if record["name"] == sub_domain])
-            if record_id:
-                return record_id
+        url = "https://dnsapi.cn/Record.List"
+        payload = {
+            "offset": offset,
+            "length": length,
+        }
+        response = self.request(url, **payload)
+        return response
+
+    def record_id(self, sub_domain: str) -> str:
+        """
+        查询子域名的记录ID
+        """
+        offset = 0
+        length = 3000
+        while True:
+            response = self.record_list(offset, length)
+            if response["status"]["code"] == str(1):
+                records = response["records"]
+                sub_domain = sub_domain + "." + self.sub if self.sub else sub_domain
+                record_id = ','.join([record["id"] for record in records if record["name"] == sub_domain])
+                if record_id:
+                    return record_id
+                else:
+                    offset = offset + length
             else:
-                logger.error(F"can not get record id: {sub_domain}")
-                return None
+                print(F"cat not get [{self.domain} -> {sub_domain}] record id")
+                return ""
 
-    def part_sub_domains(self) -> dict:
+    def sub_domains(self) -> list:
         """
-        统一所有记录的存储格式, 用于查询子域名
+        查询子域名
+            统一所有记录的存储格式，用于前端子域名页面调用、检查子域名是否为https接口调用
         """
-
-        request = self.get_record_list()
-        if request:
-            records = request.json()['records']
-            data = []
-            for item in records:
-                # 过滤掉"MX", "TXT", "SRV"类型的记录
-                if item['name'] != self.prefix_domain and item["type"] not in ("MX", "TXT", "SRV", "NS") \
-                        and item['name'].endswith(self.prefix_domain):
-                    data.append(
-                        {
-                            "name": item["name"] + "." + self.second_level_domain,
-                            "type": item["type"],
-                            # "line": item["line"],
-                            "value": item["value"],
-                            # "mx": item["mx"],
-                            # "ttl": item["ttl"],
-                            # "status": "正常" if item["enabled"] == "1" else "暂停",
-                        }
-                    )
-            return data
-
-    def sub_domains(self, part=None) -> dict:
-        """
-        统一所有记录的存储格式, 用于DNS解析页面
-        """
-        request = self.get_record_list()
-        if request:
-            records = request.json()['records']
-            data = []
-            for item in records:
-                # 过滤掉"MX", "TXT", "SRV"类型的记录
-                if part:
-                    if item['name'] != self.prefix_domain and item["type"] not in ("MX", "TXT", "SRV", "NS") \
-                            and item['name'].endswith(self.prefix_domain):
-                        data.append(
+        offset = 0
+        length = 3000
+        sub_domains_list = []
+        types_ = ("MX", "TXT", "SRV", "NS")  # 过滤掉"MX", "TXT", "SRV", "NS"类型的记录
+        while True:
+            response = self.record_list(offset, length)
+            if response["status"]["code"] == str(1):
+                records = response["records"]
+                for item in records:
+                    if item["name"] != self.sub and item["type"] not in types_ and item['name'].endswith(self.sub):
+                        sub_domains_list.append(
                             {
-                                "name": item["name"] + "." + self.second_level_domain,
+                                "name": item["name"] + "." + self.sld,
                                 "type": item["type"],
                                 "line": item["line"],
                                 "value": item["value"],
@@ -159,144 +144,100 @@ class DNSPOD(object):
                                 "status": "正常" if item["enabled"] == "1" else "暂停",
                             }
                         )
+                if (offset + length) >= int(response["info"]["record_total"]):
+                    break
                 else:
-                    data.append(
-                        {
-                            "name": item["name"] + "." + self.second_level_domain,
-                            "type": item["type"],
-                            "line": item["line"],
-                            "value": item["value"],
-                            "mx": item["mx"],
-                            "ttl": item["ttl"],
-                            "status": "正常" if item["enabled"] == "1" else "暂停",
-                        }
-                    )
-            return data
+                    offset = offset + length
+            else:
+                break
+        return sub_domains_list
 
-    def add_record(self, sub_domain=None, record_type=None, record_line=None, value=None, ttl=600, mx=None) -> bool:
+    def add_record(self, sub_domain: str, record_type: str, record_line: str, record_value: str, ttl: int = 600,
+                   mx: int = 10) -> bool:
         """
         添加记录
         """
-        try:
-            URL = "https://dnsapi.cn/Record.Create"
-            if record_type == "显示URL" or record_type == "隐性URL":
-                record_type = "URL"
-            payload = {
-                "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 token以逗号分割
-                "format": "json",
-                "domain": self.second_level_domain,
-                "sub_domain": sub_domain + ("." + self.prefix_domain if self.prefix_domain else ""),
-                "record_type": record_type.upper(),
-                "record_line": record_line,
-                "value": value,
-                "ttl": 600 if int(ttl) < 600 else int(ttl),
-            }
-            if record_type == "MX":
-                payload.update({"mx": mx})
+        url = "https://dnsapi.cn/Record.Create"
+        if record_type in ("显示URL", "隐性URL"):
+            record_type = "URL"
 
-            r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
-            code = r.json()["status"]["code"]
-            if code == "1":
-                logger.info(F"add record success: {sub_domain}")
-                return True
-            logger.error(F"add record failed: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"add record failed: {e}")
-        except Exception:
-            logger.error("add record unknown exception")
-            logger.error(traceback.format_exc())
+        payload = {
+            "sub_domain": sub_domain + ("." + self.sub if self.sub else ""),
+            "record_type": record_type.upper(),
+            "record_line": record_line,
+            "value": record_value,
+            "ttl": 600 if int(ttl) < 600 or int(ttl) > 604800 else int(ttl),
+            "mx": mx,
+        }
+        response = self.request(url, **payload)
+        if response["status"]["code"] == str(1):
+            return True
+        else:
+            return False
 
-    def delete_record(self, sub_domain=None) -> bool:
+    def delete_record(self, sub_domain: str) -> bool:
         """
         删除记录
         """
-        try:
-            URL = "https://dnsapi.cn/Record.Remove"
-            record_id = self.get_record_id(sub_domain)
-            if not record_id:
-                return False
-            payload = {
-                "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 token以逗号分割
-                "format": "json",
-                "domain": self.second_level_domain,
-                "record_id": record_id,
-            }
-            r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
-            code = r.json()["status"]["code"]
-            if code == "1":
-                logger.info(F"del record success: {sub_domain}")
-                return True
-            logger.error(F"del record failed: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"del record timeout: {e}")
-        except Exception:
-            logger.error("del record unknown exception")
-            logger.error(traceback.format_exc())
+        url = "https://dnsapi.cn/Record.Remove"
+        record_id = self.record_id(sub_domain)
+        if not record_id:
+            return False
+        payload = {
+            "record_id": record_id,
+        }
+        response = self.request(url, **payload)
+        if response["status"]["code"] == str(1):
+            return True
+        else:
+            return False
 
-    def set_record_status(self, sub_domain=None, status=None) -> bool:
+    def set_record_status(self, sub_domain: str, status: str) -> bool:
         """
         设置记录的状态
         status {enable|disable}
         """
-        try:
-            URL = "https://dnsapi.cn/Record.Status"
-            record_id = self.get_record_id(sub_domain)
-            if not record_id:
-                return False
-            payload = {
-                "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 token以逗号分割
-                "format": "json",
-                "domain": self.second_level_domain,
-                "record_id": record_id,
-                "status": status.lower(),
-            }
-            r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
-            code = r.json()["status"]["code"]
-            if code == "1":
-                logger.info(F"set record status success: [{sub_domain} : {status}]")
-                return True
-            logger.error(F"set record status failed: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"set record status timeout: {e}")
-        except Exception:
-            logger.error("set record unknown exception")
-            logger.error(traceback.format_exc())
+        url = "https://dnsapi.cn/Record.Status"
+        record_id = self.record_id(sub_domain)
+        if not record_id:
+            return False
+        payload = {
+            "record_id": record_id,
+            "status": status.lower(),
+        }
+        response = self.request(url, **payload)
+        if response["status"]["code"] == str(1):
+            return True
+        else:
+            return False
 
-    def modify_record(self, old_sub_domain=None, new_sub_domain=None, record_type=None, record_line=None, value=None,
-                      ttl=None, mx=None) -> bool:
+    def modify_record(self, old_sub_domain: str, new_sub_domain: str, record_type: str, record_line: str,
+                      record_value: str, ttl: int = 600, mx: int = 10) -> bool:
         """
         修改记录
         """
-        try:
-            URL = "https://dnsapi.cn/Record.Modify"
-            record_id = self.get_record_id(old_sub_domain)
-            if not record_id:
-                return False
-            if record_type == "显示URL" or record_type == "隐性URL":
-                record_type = "URL"
-            payload = {
-                "login_token": "{},{}".format(self.id_, self.token),  # id_ 和 token以逗号分割
-                "format": "json",
-                "domain": self.second_level_domain,
-                "record_id": record_id,
-                "sub_domain": new_sub_domain + "." + self.prefix_domain,
-                "record_type": record_type.upper(),
-                "record_line": record_line,
-                "value": value,
-                "ttl": 600 if int(ttl) < 600 else int(ttl),
-            }
-            if record_type == "MX":
-                payload.update({"mx": mx})
-            r = requests.post(URL, data=payload, timeout=self.TIMEOUT)
-            code = r.json()["status"]["code"]
-            if code == "1":
-                return True
-            logger.error(F"modify record failed: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"modify record timeout: {e}")
-        except Exception:
-            logger.error("modify record unknown exception")
-            logger.error(traceback.format_exc())
+        url = "https://dnsapi.cn/Record.Modify"
+        record_id = self.record_id(old_sub_domain)
+        if not record_id:
+            return False
+
+        if record_type in ("显示URL", "隐性URL"):
+            record_type = "URL"
+
+        payload = {
+            "record_id": record_id,
+            "sub_domain": new_sub_domain + ("." + self.sub if self.sub else ""),
+            "record_type": record_type.upper(),
+            "record_line": record_line,
+            "value": record_value,
+            "ttl": 600 if int(ttl) < 600 or int(ttl) > 604800 else int(ttl),
+            "mx": mx,
+        }
+        response = self.request(url, **payload)
+        if response["status"]["code"] == str(1):
+            return True
+        else:
+            return False
 
 
 if __name__ == "__main__":
@@ -305,14 +246,3 @@ if __name__ == "__main__":
         "id": "",
         "token": "",
     }
-    record_type = "A"
-    record_line = "默认"
-    value = "1.1.1.1"
-    ttl = 600
-    status = "enable"
-    sub_domain = "verify_domain_dx5xlpmt"
-    old_sub_domain = "fff"
-    new_sub_domain = "a2-test"
-    dnspod = DNSPOD(domain, account)
-    # dnspod.get_record_list()
-    print(dnspod.get_record_id(sub_domain))

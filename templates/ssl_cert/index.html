@@ -114,7 +114,6 @@
                                 {#url: "http://baidu.com",#}
                                 event: function () {
                                     {#layer.alert(JSON.stringify(data));#}
-                                    console.log($(this));
                                     var id = data.id;
                                     updateSSLCert(id);
                                 }
@@ -237,7 +236,11 @@
                     $.post(url, data, function (result) {
                         layer.closeAll('loading');
                         if (result['status'] === "success") {
-                            layer.alert("稍等片刻，证书将在1分钟后更新完成", {icon: 1});
+                            layer.alert("稍等片刻，证书将在1分钟后更新完成", {
+                                icon: 1, end: function () {
+                                    location.reload();
+                                }
+                            });
                         } else {
                             layer.alert(result["msg"], {icon: 5});
                         }

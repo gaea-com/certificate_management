@@ -1,22 +1,23 @@
-import logging
 import requests
 import traceback
 import json
 from requests.exceptions import ConnectTimeout
 from apps.ssl_cert.config import dns_api_mode
+from res.utils.SLD import SLD
+
 
 # CloudFlare查询子域名接口
-logger = logging.getLogger('django')
 
 
 class CLOUDFLARE(object):
-    def __init__(self, domain, account):
-        self.domain = domain
+    def __init__(self, domain: str, account: dict):
+        self.domain = domain.strip()
         self.key = account[dns_api_mode["cloudflare"][0]]
         self.email = account[dns_api_mode["cloudflare"][1]]
         self.TIMEOUT = 60
-        self.second_level_domain = '.'.join(domain.split('.')[-2:])
-        self.base_url = "https://api.cloudflare.com/client/v4/zones"
+        self.base_url = "https://api.cloudflare.com/client/v4/"
+        sld = SLD(self.domain)
+        _, self.sld = sld.domain_cut()
 
     def request_headers(self):
         """
@@ -26,206 +27,96 @@ class CLOUDFLARE(object):
             'Content-Type': 'application/json',
             "X-Auth-Key": self.key,
             "X-Auth-Email": self.email,
+            "order": "type",
+            "direction": "asc",
         }
         return headers
 
-    def get_zone_id(self):
+    def request(self, method: str, url: str, page: int = 1, **kwargs) -> dict:
+        """
+        执行请求
+        """
+        params = {
+            "page": page,
+            "per_page": 50,
+            "match": "all",
+        }
+        try:
+            if method == "GET":
+                r = requests.get(url, headers=self.request_headers(), params=params, timeout=self.TIMEOUT)
+            elif method == "POST":
+                r = requests.post(url, headers=self.request_headers(), data=json.dumps(kwargs), timeout=self.TIMEOUT)
+            elif method == "DELETE":
+                r = requests.delete(url, headers=self.request_headers(), timeout=self.TIMEOUT)
+            elif method == "PUT":
+                r = requests.put(url, headers=self.request_headers(), data=json.dumps(kwargs), timeout=self.TIMEOUT)
+            else:
+                return {"result": list()}
+            if not r.json()["success"]:
+                print(F"[{self.sld}] {method} request error: {r.text}")
+            return r.json()
+        except ConnectTimeout as e:
+            print(F"[{self.sld}] {method} request timeout: {e}")
+            return {"result": list()}
+
+    def zone_id(self) -> str:
         """
         查询zone id
-        :return: id|None
         """
-        try:
-            payload = {
-                "page": 1,
-                "per_page": 20,
-                "match": "all",
-            }
-            r = requests.get(self.base_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-            status = r.json()["success"]
-            total_pages = r.json()["result_info"]["total_pages"]
-            result = r.json()["result"]
-
-            if not status:
-                logger.error("request failed")
-                logger.error(r.text)
-                return None
-
-            zone_id = None
-            page = 1
-            while page <= total_pages:
-                for item in result:
-                    if item["name"] == self.second_level_domain:
-                        zone_id = item["id"]
-                        return zone_id
-
-                page += 1
-                payload = {
-                    "page": page,
-                    "per_page": 20,
-                    "match": "all",
-                }
-
-                r = requests.get(self.base_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-                result = r.json()["result"]
-
-            if not zone_id:
-                logger.error(F"cat not get zone id: {r.text}")
-
-        except ConnectTimeout as e:
-            logger.error(F"get zone id timeout: {e}")
-        except Exception:
-            logger.error(F"get zone id unknown exception")
-            logger.error(traceback.format_exc())
-
-    def get_record_id(self, zone_id: str, sub_domain: str) -> str:
-        """
-        查询记录id
-        """
-        try:
-            sub_domain = sub_domain.lower()
-            dns_record_url = self.base_url + "/" + zone_id + "/" + "dns_records"
-            payload = {
-                "page": 1,
-                "per_page": 20,
-                "match": "all",
-            }
-            r = requests.get(dns_record_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-            status = r.json()["success"]
-            total_pages = r.json()["result_info"]["total_pages"]
-            result = r.json()["result"]
-            if not status:
-                logger.error(F"query record failed: {r.text}")
+        url = self.base_url + "zones"
+        page = 1
+        while True:
+            response = self.request("GET", url, page)
+            result = response["result"]
+            if result:
+                zone_id = [item["id"] for item in result if item["name"] == self.sld]
+                if zone_id:
+                    return ''.join(zone_id)
+                else:
+                    page += 1
+            else:
+                print(F"cat not get [{self.sld}] zone id")
                 return ""
-            identifier = None
-            for page in range(1, total_pages + 1):
-                for item in result:
-                    if item["name"] == sub_domain + "." + self.domain:
-                        identifier = item["id"]
-                        return identifier
-                page += 1
-                if page == total_pages + 1:
-                    break
 
-                payload = {
-                    "page": page,
-                    "per_page": 20,
-                    "match": "all",
-                }
-                r = requests.get(dns_record_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-                result = r.json()["result"]
-
-            if not identifier:
-                logger.error(F"cat not get record id: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"get record id timeout: {e}")
-        except Exception:
-            logger.error(F"get record id unknown exception")
-            logger.error(traceback.format_exc())
-
-    def part_sub_domains(self):
+    def record_id(self, sub_domain: str) -> tuple:
         """
-        查询域名下的所有子域名
-        :return: list
+        查询记录ID
+        返回 zone id, record id
         """
-        try:
-            zone_id = self.get_zone_id()
+        zone_id = self.zone_id()
+        url = self.base_url + "zones/" + zone_id + "/dns_records"
+        page = 1
+        while True:
+            response = self.request("GET", url, page)
+            result = response["result"]
+            if result:
+                record_id = [item["id"] for item in result if item["name"] == sub_domain + "." + self.domain]
+                if record_id:
+                    return zone_id, ''.join(record_id)
+                else:
+                    page += 1
+            else:
+                print(F"cat not get [{self.sld} -> {sub_domain}] record id")
+                return "", ""
 
-            payload = {
-                "page": 1,
-                "per_page": 20,
-                "match": "all",
-            }
-            records_url = self.base_url + "/" + zone_id + "/" + "dns_records"
-            r = requests.get(records_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-            status = r.json()["success"]
-            total_pages = r.json()["result_info"]["total_pages"]
-            result = r.json()["result"]
-            if not status:
-                logger.error(F"query record failed: {r.text}")
-                return None
-
-            data = []
-            for page in range(1, total_pages + 1):
+    def sub_domains(self):
+        """
+        查询子域名
+        """
+        zone_id = self.zone_id()
+        url = self.base_url + "zones/" + zone_id + "/dns_records"
+        page = 1
+        sub_domains_list = []
+        types_ = ("MX", "TXT", "SRV", "NS")  # 过滤掉"MX", "TXT", "SRV", "NS"类型的记录
+        while True:
+            response = self.request("GET", url, page)
+            result = response["result"]
+            if result:
                 for item in result:
-                    # 过滤掉"MX", "TXT", "SRV"类型的记录
-                    if item["name"] != self.domain and item["type"] not in ("MX", "TXT", "SRV", "NS") and \
-                            item["name"].endswith(self.domain):
-                        data.append(
+                    if item["name"] != self.domain and item["type"] not in types_ and item["name"].endswith(
+                            self.domain):
+                        sub_domains_list.append(
                             {
-                                # "name": ".".join(item["name"].split(".")[0:-2]),
-                                "name": item["name"],
-                                "type": item["type"],
-                                # "line": None,
-                                "value": item["content"],
-                                # "mx": item["priority"] if "priority" in item else "0",
-                                # "ttl": item["ttl"],
-                                # "status": "正常",
-                            }
-                        )
-
-                page += 1
-                if page == total_pages + 1:
-                    break
-                payload = {
-                    "page": page,
-                    "per_page": 20,
-                    "match": "all",
-                }
-                r = requests.get(records_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-                result = r.json()["result"]
-
-            return data
-        except ConnectTimeout as e:
-            logger.error(F"get sub domains failed: {e}")
-        except Exception:
-            logger.error(F"get sub domains unknown exception")
-            logger.error(traceback.format_exc())
-
-    def sub_domains(self, part=None):
-        """
-        查询域名下的所有子域名
-        :return: list
-        """
-        try:
-            zone_id = self.get_zone_id()
-
-            payload = {
-                "page": 1,
-                "per_page": 20,
-                "match": "all",
-            }
-            records_url = self.base_url + "/" + zone_id + "/" + "dns_records"
-            r = requests.get(records_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-            status = r.json()["success"]
-            total_pages = r.json()["result_info"]["total_pages"]
-            result = r.json()["result"]
-            if not status:
-                logger.error(F"query record failed: {r.text}")
-                return None
-
-            data = []
-            for page in range(1, total_pages + 1):
-                for item in result:
-                    if part:
-                        # 过滤掉"MX", "TXT", "SRV"类型的记录
-                        if item["name"] != self.domain and item["type"] not in ("MX", "TXT", "SRV", "NS") and \
-                                item["name"].endswith(self.domain):
-                            data.append(
-                                {
-                                    # "name": ".".join(item["name"].split(".")[0:-2]),
-                                    "name": item["name"],
-                                    "type": item["type"],
-                                    "line": None,
-                                    "value": item["content"],
-                                    "mx": item["priority"] if "priority" in item else "0",
-                                    "ttl": item["ttl"],
-                                    "status": "正常",
-                                }
-                            )
-                    else:
-                        data.append(
-                            {
-                                # "name": ".".join(item["name"].split(".")[0:-2]),
                                 "name": item["name"],
                                 "type": item["type"],
                                 "line": None,
@@ -235,113 +126,76 @@ class CLOUDFLARE(object):
                                 "status": "正常",
                             }
                         )
-
-                page += 1
-                if page == total_pages + 1:
+                if page >= response["result_info"]["total_pages"]:
                     break
-                payload = {
-                    "page": page,
-                    "per_page": 20,
-                    "match": "all",
-                }
-                r = requests.get(records_url, headers=self.request_headers(), params=payload, timeout=self.TIMEOUT)
-                result = r.json()["result"]
+                else:
+                    page += 1
+            else:
+                break
+        return sub_domains_list
 
-            return data
-        except ConnectTimeout as e:
-            logger.error(F"get sub domains failed: {e}")
-        except Exception:
-            logger.error(F"get sub domains unknown exception")
-            logger.error(traceback.format_exc())
-
-    def add_record(self, sub_domain=None, record_type=None, line=None, record_value=None, ttl=None, priority=None):
+    def add_record(self, sub_domain: str, record_type: str, line: str, record_value: str, ttl: int = 1,
+                   priority: int = 10) -> bool:
         """
-        添加域名记录
-        :return: True|False
+        添加记录
         """
-        try:
-            zone_id = self.get_zone_id()
-            add_record_url = self.base_url + "/" + zone_id + "/" + "dns_records"
-            if record_type == "显示URL" or record_type == "隐性URL":
-                record_type = "URI"
-            payload = {
-                "type": record_type,
-                "name": sub_domain + "." + self.domain,
-                "content": record_value,
-                # "ttl": 120 if int(ttl) < 120 else int(ttl),
-                "ttl": 1,  # 值为1，自动生效
-            }
-            if record_type == "MX":
-                payload.update({"priority": priority})
-            r = requests.post(add_record_url, headers=self.request_headers(), data=json.dumps(payload),
-                              timeout=self.TIMEOUT)
-            status = r.json()["success"]
-            if status:
-                logger.info(F"add record success: {sub_domain}")
-                return True
-            logger.error(F"add record failed: {r.text}")
-        except ConnectTimeout:
-            logger.error(F"add record timeout: {sub_domain}")
-        except UnboundLocalError:
-            logger.error(F"add record failed, not found domain, please check api account: [{self.key} : {self.email}]")
-        except Exception:
-            logger.error(F"add record unknown exception")
-            logger.error(traceback.format_exc())
-        return False
+        line = None  # cloudflare没有这项参数，加上这俩参数是为了与dnspod、阿里云接口保持一致
+        zone_id = self.zone_id()
+        url = self.base_url + "zones/" + zone_id + "/dns_records"
+        if record_type in ("显示URL", "隐性URL"):
+            record_type = "URI"
 
-    def delete_record(self, sub_domain=None):
+        payload = {
+            "type": record_type,
+            "name": sub_domain + "." + self.domain,
+            "content": record_value,
+            "ttl": 1,  # 值为1，自动生效
+            "priority": priority,  # 优化级
+            "proxied": False,  #
+        }
+        response = self.request("POST", url, **payload)
+        if response["success"]:
+            return True
+        else:
+            return False
+
+    def delete_record(self, sub_domain: str) -> bool:
         """
         删除记录
-        :return: True|False
         """
-        try:
-            zone_id = self.get_zone_id()
-            record_id = self.get_record_id(zone_id, sub_domain)
-            del_record_url = self.base_url + "/" + zone_id + "/" + "dns_records" + "/" + record_id
-            r = requests.delete(del_record_url, headers=self.request_headers(), timeout=self.TIMEOUT)
-            status = r.json()["success"]
-            if status:
-                logger.info(F"del record success: {sub_domain}")
-                return True
-            logger.error(F"del record failed: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"del record timeout: {e}")
-        except TypeError:
-            logger.error(F"zone_id or record_id is null ?")
-        except Exception:
-            logger.error("del record unknown exception")
-            logger.error(traceback.format_exc())
+        zone_id, record_id = self.record_id(sub_domain)
+        url = self.base_url + "zones/" + zone_id + "/dns_records/" + record_id
+        response = self.request("DELETE", url)
+        if response["success"]:
+            return True
+        else:
+            return False
 
-    def modify_record(self, old_sub_domain=None, new_sub_domain=None, record_type=None,
-                      line=None, record_value=None, ttl=None, priority=None):
+    def modify_record(self, old_sub_domain: str, new_sub_domain: str, record_type: str, line: str, record_value: str,
+                      ttl: int = 1, priority: int = 10):
         """
         修改记录
-        :return: True|False
         """
-        try:
-            zone_id = self.get_zone_id()
-            record_id = self.get_record_id(zone_id, old_sub_domain)
-            modify_record_url = self.base_url + "/" + zone_id + "/" + "dns_records" + "/" + record_id
-            if record_type == "显示URL" or record_type == "隐性URL":
-                record_type = "URI"
-            payload = {
-                "type": record_type,
-                "name": new_sub_domain + "." + self.domain,
-                "content": record_value,
-                "ttl": 1,  # 值为1，自动生效
-            }
-            if record_type == "MX":
-                payload.update({"priority": priority})
-            r = requests.put(modify_record_url, headers=self.request_headers(), data=json.dumps(payload), timeout=10)
-            status = r.json()["success"]
-            if status:
-                return True
-            logger.error(F"modify record failed: {r.text}")
-        except ConnectTimeout as e:
-            logger.error(F"modify record timeout: {e}")
-        except Exception:
-            logger.error("modify record unknown exception")
-            logger.error(traceback.format_exc())
+        line = None  # cloudflare没有这项参数，加上这俩参数是为了与dnspod、阿里云接口保持一致
+        zone_id, record_id = self.record_id(old_sub_domain)
+        url = self.base_url + "zones/" + zone_id + "/dns_records/" + record_id
+        if record_type in ("显示URL", "隐性URL"):
+            record_type = "URI"
+
+        payload = {
+            "type": record_type,
+            "name": new_sub_domain + "." + self.domain,
+            "content": record_value,
+            "ttl": 1,  # 值为1，自动生效
+            "priority": priority,  # 优化级
+            "proxied": False,  #
+        }
+        response = self.request("PUT", url, **payload)
+        print(response)
+        if response["success"]:
+            return True
+        else:
+            return False
 
 
 if __name__ == "__main__":
@@ -350,18 +204,3 @@ if __name__ == "__main__":
         "key": "",
         "email": ""
     }
-
-    sub_domain = "verify_domain_JOdWq1SI"
-    # record_type = "CNAME"
-    # record_value = "www.baidu.com"
-
-    # old_sub_domain = "test-blog"
-    # new_sub_domain = "aaa-blog"
-    # record_type = "A"
-    # record_value = "1.1.1.1"
-    #
-    cloudflare = CLOUDFLARE(domain, account)
-    # ret = cloudflare.add_record(sub_domain=sub_domain, record_type="TXT", line=None, record_value="123", ttl=None, priority=None)
-    # print((ret))
-    # ret = cloudflare.delete_record(sub_domain=sub_domain)
-    # print(ret)

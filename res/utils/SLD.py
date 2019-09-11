@@ -7,20 +7,34 @@ tieba.baidu.com
 
 
 class SLD(object):
-    """
-    SLD(second-level domain)
-    """
 
     def __init__(self, domain: str):
         self.domain = domain.strip()
 
-    def sld(self):
+    def is_sld(self) -> bool:
+        """
+        检查域名是否是二级域名
+        SLD(second-level domain)
+        """
         suffix = self.reg_match()
         if len(self.domain.split(suffix)[0].split(".")) == 1:
             # 说明是二级域名
             return True
         else:
             return False
+
+    def domain_cut(self) -> tuple:
+        """
+        域名切割
+            将一个域名切割为二级域名及其子域名
+        """
+        if self.is_sld():
+            return "", self.domain
+
+        suffix = self.reg_match()
+        sld = self.domain.split(suffix)[0].split(".")[-1] + suffix
+        sub = self.domain.split("." + sld)[0]
+        return sub, sld
 
     def reg_match(self):
         domain_suffix = [".com", ".cn", ".com.cn", ".gov", ".net", ".edu.cn", ".net.cn", ".org.cn", ".co.jp", ".gov.cn",
@@ -41,5 +55,5 @@ class SLD(object):
 
 
 if __name__ == '__main__':
-    sld = SLD("baidu.com")
-    print(sld.sld())
+    sld = SLD("baidu.net")
+    print(sld.domain_cut())

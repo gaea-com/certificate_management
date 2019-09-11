@@ -1,4 +1,3 @@
-import logging
 import json
 import traceback
 from apps.ssl_cert.config import dns_api_mode
@@ -12,18 +11,19 @@ from aliyunsdkalidns.request.v20150109.UpdateDomainRecordRequest import UpdateDo
 from aliyunsdkalidns.request.v20150109.AddDomainRecordRequest import AddDomainRecordRequest
 from aliyunsdkalidns.request.v20150109.DeleteSubDomainRecordsRequest import DeleteSubDomainRecordsRequest
 
+
 # aliyun查询子域名接口
-logger = logging.getLogger('django')
+# TODO 未重新优化
 
 
 class ALIYUN(object):
-    def __init__(self, domain: str, account: str):
+    def __init__(self, domain: str, account: dict):
         self.domain = domain.strip()
         self.key = account[dns_api_mode["aliyun"][0]]
         self.secret = account[dns_api_mode["aliyun"][1]]
         # self.TIMEOUT = 10
         sld = SLD(self.domain)
-        self.prefix_domain, self.second_level_domain = sld.domain_cut()
+        self.sub, self.sld = sld.domain_cut()
 
         # if domain.endswith(".com.cn") or \
         #         domain.endswith(".net.cn") or \
@@ -35,7 +35,7 @@ class ALIYUN(object):
         #     self.prefix_domain = '.'.join(domain.split(".")[0:-2])
         #     self.second_level_domain = '.'.join(domain.split('.')[-2:])
 
-    def record_line(self, key=None, value=None):
+    def record_line(self, key: str = None, value: str = None) -> str:
         """
             基础线路
             线路值	线路中文说明
@@ -67,6 +67,12 @@ class ALIYUN(object):
             if v == value:
                 return k
 
+    def record_id(self, sub_domain: str):
+        """
+        记录ID
+        """
+        pass
+
     def get_record_id(self, rr):
         """
         查询record id
@@ -89,57 +95,13 @@ class ALIYUN(object):
             if record_id:
                 return record_id
 
-            logger.error(F"cat not get record id: {response}")
+            print(F"cat not get record id: {response}")
 
         except Exception:
-            logger.error("get record id unknown exception")
-            logger.error(traceback.format_exc())
+            print("get record id unknown exception")
+            print(traceback.format_exc())
 
-    # def part_sub_domains(self):
-    #     """
-    #     查询所有子域名
-    #     :return: list|None
-    #     """
-    #     try:
-    #         client = AcsClient(self.key, self.secret, 'cn-hangzhou')
-    #         request = DescribeDomainRecordsRequest()
-    #         request.set_accept_format('json')
-    #         request.set_PageSize(500)  # 分页查询时设置的每页行数，最大值500，默认为20
-    #         request.set_DomainName(self.second_level_domain)
-    #         response = client.do_action_with_exception(request)
-    #
-    #         response = json.loads(response)
-    #         records = response["DomainRecords"]["Record"]
-    #
-    #         if not records:
-    #             logger.error(F"query sub domains failed: {response}")
-    #             return None
-    #
-    #         data = []
-    #         for item in records:
-    #             if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV", "NS") and \
-    #                     item["RR"].endswith(self.prefix_domain):
-    #                 data.append(
-    #                     {
-    #                         "name": item["RR"] + "." + item["DomainName"],
-    #                         "type": item["Type"],
-    #                         # "line": self.record_line(key=item["Line"]),
-    #                         "value": item["Value"],
-    #                         # "mx": item["Priority"] if "Priority" in item else "0",
-    #                         # "ttl": item["TTL"],
-    #                         # "status": "正常" if item["Status"] == "ENABLE" else "暂停",  # ENABLE DISABLE
-    #                     }
-    #                 )
-    #         return data
-    #
-    #     except KeyError as e:
-    #         logger.error(F"domain not exist: {e}")
-    #
-    #     except Exception:
-    #         logger.error("query sub domains unknown exception")
-    #         logger.error(traceback.format_exc())
-
-    def sub_domains(self):
+    def part_sub_domains(self):
         """
         查询所有子域名
         :return: list|None
@@ -156,14 +118,70 @@ class ALIYUN(object):
             records = response["DomainRecords"]["Record"]
 
             if not records:
-                logger.error(F"query sub domains failed: {response}")
+                print(F"query sub domains failed: {response}")
                 return None
 
             data = []
-            types_ = ("MX", "TXT", "SRV", "NS")  # 过滤掉"MX", "TXT", "SRV", "NS"类型的记录
             for item in records:
-                if item["RR"] != self.prefix_domain and item["Type"] not in types_ and \
+                if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV", "NS") and \
                         item["RR"].endswith(self.prefix_domain):
+                    data.append(
+                        {
+                            "name": item["RR"] + "." + item["DomainName"],
+                            "type": item["Type"],
+                            # "line": self.record_line(key=item["Line"]),
+                            "value": item["Value"],
+                            # "mx": item["Priority"] if "Priority" in item else "0",
+                            # "ttl": item["TTL"],
+                            # "status": "正常" if item["Status"] == "ENABLE" else "暂停",  # ENABLE DISABLE
+                        }
+                    )
+            return data
+
+        except KeyError as e:
+            print(F"domain not exist: {e}")
+
+        except Exception:
+            print("query sub domains unknown exception")
+            print(traceback.format_exc())
+
+    def sub_domains(self, part=None):
+        """
+        查询所有子域名
+        :return: list|None
+        """
+        try:
+            client = AcsClient(self.key, self.secret, 'cn-hangzhou')
+            request = DescribeDomainRecordsRequest()
+            request.set_accept_format('json')
+            request.set_PageSize(500)  # 分页查询时设置的每页行数，最大值500，默认为20
+            request.set_DomainName(self.second_level_domain)
+            response = client.do_action_with_exception(request)
+
+            response = json.loads(response)
+            records = response["DomainRecords"]["Record"]
+
+            if not records:
+                print(F"query sub domains failed: {response}")
+                return None
+
+            data = []
+            for item in records:
+                if part:
+                    if item["RR"] != self.prefix_domain and item["Type"] not in ("MX", "TXT", "SRV", "NS") and \
+                            item["RR"].endswith(self.prefix_domain):
+                        data.append(
+                            {
+                                "name": item["RR"] + "." + self.second_level_domain,
+                                "type": item["Type"],
+                                "line": self.record_line(key=item["Line"]),
+                                "value": item["Value"],
+                                "mx": item["Priority"] if "Priority" in item else "0",
+                                "ttl": item["TTL"],
+                                "status": "正常" if item["Status"] == "ENABLE" else "暂停",  # ENABLE DISABLE
+                            }
+                        )
+                else:
                     data.append(
                         {
                             "name": item["RR"] + "." + self.second_level_domain,
@@ -175,15 +193,14 @@ class ALIYUN(object):
                             "status": "正常" if item["Status"] == "ENABLE" else "暂停",  # ENABLE DISABLE
                         }
                     )
-
             return data
 
         except KeyError as e:
-            logger.error(F"domain not exist: {e}")
+            print(F"domain not exist: {e}")
 
         except Exception:
-            logger.error("query sub domains unknown exception")
-            logger.error(traceback.format_exc())
+            print("query sub domains unknown exception")
+            print(traceback.format_exc())
 
     def add_record(self, rr=None, type=None, line=None, value=None, ttl=600, mx=None):
         """
@@ -217,15 +234,15 @@ class ALIYUN(object):
             response = json.loads(response)
 
             if "Code" in response.keys():
-                logger.error(F"add record failed: {response}")
+                print(F"add record failed: {response}")
                 return False
 
-            logger.info(F"add record success: {rr}")
+            print(F"add record success: {rr}")
             return True
 
         except Exception:
-            logger.error("add record unknown exception")
-            logger.error(traceback.format_exc())
+            print("add record unknown exception")
+            print(traceback.format_exc())
             return False
 
     def delete_record(self, rr=None):
@@ -248,14 +265,14 @@ class ALIYUN(object):
             totalCount = response["TotalCount"]
 
             if totalCount == "1":
-                logger.info(F"delete record success: {rr}")
+                print(F"delete record success: {rr}")
                 return True
 
-            logger.error(F"delete record failed: {response}")
+            print(F"delete record failed: {response}")
 
         except Exception:
-            logger.error("delete record unknown exception")
-            logger.error(traceback.format_exc())
+            print("delete record unknown exception")
+            print(traceback.format_exc())
 
         return False
 
@@ -280,18 +297,18 @@ class ALIYUN(object):
             response = json.loads(response)
 
             if response["Status"] == "Disable":
-                logger.info(F"set record status: [{rr} : Disable]")
+                print(F"set record status: [{rr} : Disable]")
                 return True
             elif response["Status"] == "Enable":
-                logger.info(F"set record status: [{rr} : Enable]")
+                print(F"set record status: [{rr} : Enable]")
                 return True
 
-            logger.error(F"set record status failed: {response}")
+            print(F"set record status failed: {response}")
             return False
 
         except Exception:
-            logger.error("set record status unknown exception")
-            logger.error(traceback.format_exc())
+            print("set record status unknown exception")
+            print(traceback.format_exc())
             return False
 
     def modify_record(self, old_rr=None, new_rr=None, type=None, line=None, value=None,
@@ -329,20 +346,20 @@ class ALIYUN(object):
                 response = json.loads(response)
 
                 if "Code" in response.keys():
-                    logger.error(F"modify record failed: {response}")
-                    logger.error(response)
+                    print(F"modify record failed: {response}")
+                    print(response)
                     return False
 
-                logger.info(F"modify record success: [{old_rr} -> {new_rr}]")
+                print(F"modify record success: [{old_rr} -> {new_rr}]")
                 return True
 
             except ServerException as e:
-                logger.warning(F"No changes for record: {e}")
+                print(F"No changes for record: {e}")
                 return True
 
         except Exception:
-            logger.error(F"modify record unknown exception")
-            logger.error(traceback.format_exc())
+            print(F"modify record unknown exception")
+            print(traceback.format_exc())
             return False
 
 

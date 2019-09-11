@@ -275,10 +275,12 @@ def verify_account(dns, domain, account):
     cls = eval(dns.upper())
     obj = cls(domain, account)
     sub_domain = F"verify_domain_{''.join(random.sample(string.ascii_letters + string.digits, 8))}".lower()
+    log.info(F"verify [{domain} - {dns}] account: add record [{sub_domain}]")
     result = obj.add_record(sub_domain, "TXT", "默认", random_value)
     if result:
         time.sleep(1)
         result = obj.delete_record(sub_domain)
+        log.info(F"verify [{domain} - {dns}] account: del record [{sub_domain}]")
         return result
 
 
@@ -438,6 +440,8 @@ class UpdateSSLCertView(LoginRequiredMixin, View):
 
         if (expire_date - now_time).days >= 30:
             return JsonResponse({"status": "failed", "msg": "请在距离过期日期小于30天时再执行更新"})
+
+        queryset.update(status="pending")
 
         # 更新证书子线程
         ssl_cert = SSLCert(domain, extensive_domain, dns, dns_account)
