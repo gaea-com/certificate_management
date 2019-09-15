@@ -611,7 +611,7 @@ class DnsView(LoginRequiredMixin, View):
         account = eval(queryset.values()[0]["dns_account"])
         cls = eval(dns.upper())
         obj = cls(domain, account)
-        record_list = obj.sub_domains("part")
+        record_list = obj.sub_domains()
         return JsonResponse({"record_list": record_list})
 
 
