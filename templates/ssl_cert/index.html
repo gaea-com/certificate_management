@@ -60,6 +60,7 @@
         layui.use(['table', 'dropdown'], function () {
             var table = layui.table,
                 dropdown = layui.dropdown;
+            var nowTime = moment();
             table.render({
                 elem: '#domainTable',
                 url: "{% url 'ssl_cert:domain_list' %}",
@@ -67,23 +68,43 @@
                     {title: "序号", align: 'center', width: 80, type: 'numbers'},
                     {field: 'domain', title: '域名', align: 'center'},
                     {
-                        field: 'start_date', title: '开始日期', align: 'center', width: 120, templet: function (d) {
+                        field: 'start_date',
+                        title: '开始日期',
+                        align: 'center',
+                        sort: true,
+                        width: 120,
+                        templet: function (d) {
                             return moment(d.start_date).format('YYYY-MM-DD')
                         }
                     },
                     {
-                        field: 'expire_date', title: '过期日期', align: 'center', width: 120, templet: function (d) {
+                        field: 'expire_date',
+                        title: '过期日期',
+                        align: 'center',
+                        sort: true,
+                        width: 120,
+                        templet: function (d) {
                             return moment(d.expire_date).format('YYYY-MM-DD')
                         }
                     },
                     {
-                        field: '剩余天数', title: '剩余天数', align: 'center', width: 120, templet: function (d) {
-                            var nowTime = moment();
+                        field: '剩余天数', title: '剩余/天', align: 'center', width: 80, templet: function (d) {
+                            {#var nowTime = moment();#}
                             var expireTime = moment(d.expire_date);
-                            return expireTime.diff(nowTime, 'days') + " 天"
+                            var days_ = expireTime.diff(nowTime, 'days');
+                            return days_ + " 天"
                         }
                     },
                     {field: 'dns', title: 'DNS', align: 'center', width: 100},
+                    {
+                        field: 'ext', title: '泛域名', align: 'center', width: 80, templet: function (d) {
+                            if (d.extensive_domain) {
+                                return "YES";
+                            } else {
+                                return "NO";
+                            }
+                        }
+                    },
                     {
                         field: 'status', title: '状态', align: 'center', width: 80, templet: function (d) {
                             if (d.status === "valid") {
@@ -362,7 +383,7 @@
                 $(".layui-table-main table tbody").find("tr").each(function () {
                     var tdArr = $(this).children();
                     var domain = tdArr.eq(1).find("div").text();
-                    var status = tdArr.eq(6).find("span").text();
+                    var status = tdArr.eq(7).find("span").text();
 
                     var url = "{% url 'ssl_cert:check_domain_status' %}?domain=" + domain;
                     if (status === "创建中") {
@@ -379,16 +400,5 @@
                 });
             }, 10000);
         };
-
-        //window.onload = function () {
-        //    $(".layui-table-main table tbody").find("tr").each(function () {
-        //        var tdArr = $(this).children();
-        //        {#var domain = tdArr.eq(1).find("div").text();#}
-        //        var status = tdArr.eq(6).find("span").text();
-        //        var operation = tdArr.eq(7).find("button i");
-        //        {#var beforeElement = window.;#}
-        //        console.log(operation);
-        //    });
-        //};
     </script>
 {% endblock %}
