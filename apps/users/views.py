@@ -9,15 +9,15 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
 from django.contrib import auth
 from django.core.mail import EmailMultiAlternatives
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.views.generic.base import View, TemplateView
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import update_session_auth_hash
-from django.views.generic.edit import FormView, CreateView
+from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
-from .forms import RegisterForm, PasswordChangeForm, LoginForm, CreateUserForm
-from .models import User, ActivateCode
+from .forms import RegisterForm, PasswordChangeForm, LoginForm, CreateUserForm, EmailConfigForm
+from .models import User, ActivateCode, EmailConfig
 from django.conf import settings
 from ssl_cert.models import Domain
 from apps.mixin import LoginRequiredMixin
@@ -292,17 +292,17 @@ class CreateUserView(LoginRequiredMixin, View):
             new_user.password = make_password(form.cleaned_data['password1'])
             new_user.save()
             form.save_m2m()
-            retsult = {"status": "success"}
+            result = {"status": "success"}
         else:
             pattern = '<li>.*?<ul class=.*?><li>(.*?)</li>'
             errors = str(form.errors)
             form_errors = re.findall(pattern, errors)
-            retsult = {
+            result = {
                 "status": "failed",
                 "form_errors": form_errors[0],
             }
-        log.info(F"create user status: {retsult}")
-        return JsonResponse(retsult, content_type='application/json')
+        log.info(F"create user status: {result}")
+        return JsonResponse(result, content_type='application/json')
 
 
 class UserDeleteView(LoginRequiredMixin, View):
@@ -363,3 +363,30 @@ class PasswordChangeView(LoginRequiredMixin, View):
                 'password_change_form_errors': password_change_form_errors[0]
             }
         return JsonResponse(ret)
+
+
+class EmailConfigView(LoginRequiredMixin, View):
+    """
+    email 配置
+    """
+
+    def get(self, request):
+        email_config = EmailConfig.objects.all()
+        return JsonResponse(email_config.values()[0])
+
+    def post(self, request):
+        data = request.POST.copy()
+        if data["ssl"] == "on":
+            data["ssl"] = True
+        else:
+            data["ssl"] = False
+        form = EmailConfigForm(data)
+        if form.is_valid():
+            EmailConfig.objects.all().delete()
+            form.save()
+            result = {"status": "success"}
+        else:
+            result = {"status": "failed"}
+
+        log.info(F"email config modify: [{result} -- {form.errors}]")
+        return JsonResponse(result)

@@ -517,15 +517,14 @@ class SyncSubDomainView(LoginRequiredMixin, View):
     def post(self, request):
         user = request.user.username
         domain = request.POST.get('domain')
-        try:
-            SubSyncLimit.objects.get(user=user, domain=domain)  # 查看表中是否存在此用户，不存在则报异常
-            if SubSyncLimit.objects.filter(user=user, domain=domain, sync_time__lt=datetime.now()).count() > 0:
-                SubSyncLimit.objects.update(user=user, domain=domain, sync_time=(datetime.now() + timedelta(minutes=2)))
+        queryset = SubSyncLimit.objects.filter(user=user, domain=domain)
+        if queryset:    # 查看表中是否存在此记录, 不存在则创建记录
+            if queryset.filter(sync_time__lt=datetime.now()).count() > 0:
+                queryset.update(user=user, domain=domain, sync_time=(datetime.now() + timedelta(minutes=2)))
             else:
                 return JsonResponse({"status": "failed", "msg": "每次同步间隔2分钟"})
-        except SubSyncLimit.DoesNotExist:
-            SubSyncLimit.objects.create(user=user, domain=domain,
-                                        sync_time=(datetime.now() + timedelta(minutes=2))).save()
+        else:
+            queryset.create(user=user, domain=domain, sync_time=(datetime.now() + timedelta(minutes=2)))
 
         domain_queryset = Domain.objects.filter(domain=domain)
         dns = domain_queryset.values()[0]["dns"]

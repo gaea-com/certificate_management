@@ -1,31 +1,62 @@
 {% extends 'users/settings/base-settings.html' %}
 
 
-<!--
-基本设置
-没有启用此页面
--->
-
 {% block settings_content %}
     <div class="fly-panel fly-panel-user" pad20>
         <div class="layui-tab layui-tab-brief" lay-filter="user">
             <ul class="layui-tab-title" id="LAY_mine">
-                <li class="layui-this" lay-id="info">权限管理</li>
+                <li class="layui-this" lay-id="info">邮件服务</li>
             </ul>
-            <div class="layui-tab-content" style="padding: 20px 0;">
+            <div class="layui-tab-content" style="padding: 10px 0;">
+                <blockquote class="layui-elem-quote">用于发送证书及证书到期提醒</blockquote>
                 <div class="layui-form layui-form-pane layui-tab-item layui-show">
-                    <div class="searchTable">
-                        <button class="layui-btn" data-type="reload">搜索</button>
-                        <div class="layui-inline">
-                            <input class="layui-input" name="id" id="bucketReload" autocomplete="off"
-                                   placeholder="bucket 名称">
-                        </div>
-                    </div>
 
-                    <table class="layui-hide" id="domainTable" lay-filter="domain_filter"></table>
-                    <script type="text/html" id="domainToolBar">
-                        <a class="layui-btn layui-btn-xs" lay-event="edit">授权</a>
-                    </script>
+
+                    <form method="post">
+                        <div class="layui-form-item">
+                            <label for="L_email" class="layui-form-label">邮箱</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="L_email" name="email" required lay-verify="email"
+                                       autocomplete="off" value="" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label for="L_nowpass" class="layui-form-label">密码</label>
+                            <div class="layui-input-inline">
+                                <input type="password" id="L_password" name="password" required lay-verify="required"
+                                       autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label for="L_email" class="layui-form-label">服务器</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="L_server" name="server" required lay-verify="required"
+                                       autocomplete="off" value=""
+                                       class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label for="L_email" class="layui-form-label">端口</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="L_port" name="port" required lay-verify="required"
+                                       autocomplete="off" value=""
+                                       class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label for="L_username" class="layui-form-label">SSL加密</label>
+                            <div class="layui-inline">
+                                <input type="radio" name="ssl" value="on" checked title="yes" id="radio1">
+                                <input type="radio" name="ssl" value="off" title="no" id="radio2">
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <button type="button" class="layui-btn" key="set-mine" lay-filter="formSubmit" lay-submit>提交
+                            </button>
+                        </div>
+                    </form>
+
                 </div>
             </div>
         </div>
@@ -40,69 +71,52 @@
         })
     </script>
     <script>
-        layui.use('table', function () {
-            var table = layui.table;
-
-            table.render({
-                elem: '#domainTable',
-                url: "{% url 'ssl_cert:domain_list' %}",
-                limit: 10,
-                {#title: '用户数据表',#}
-                cols: [[
-                    {field: '序号', sort: true, align: 'center', width: 80, type: 'numbers'},
-                    {field: 'domain', title: '域名', align: 'center'},
-                    {field: 'dns', title: 'DNS', align: 'center', sort: true},
-                    {fixed: 'right', title: '操作', toolbar: '#domainToolBar', width: 150}
-                ]],
-                page: true,
-                id: 'tableReload',
-            });
-
-            //
-            var $ = layui.$, active = {
-                reload: function () {
-                    var bucketReload = $('#bucketReload');
-                    console.log(bucketReload.val());
-                    //执行重载
-                    table.reload('tableReload', {
-                        page: {
-                            curr: 1 //重新从第 1 页开始
-                        }
-                        , where: {
-                            bucket: bucketReload.val()
-                        }
-                    }, 'data');
-                }
-            };
-
-            $('.searchTable .layui-btn').on('click', function () {
-                var type = $(this).data('type');
-                active[type] ? active[type].call(this) : '';
-            });
-            //
-
-
-            //监听行工具事件
-            {#table.on('tool(domain_filter)', function (obj) {#}
-            {#    var data = obj.data;#}
-            {#    if (obj.event === 'edit') {#}
-            {#        layer.open({#}
-            {#            type: 2,#}
-            {#            title: '授权',#}
-            {#            shadeClose: true,#}
-            {#            maxmin: true,#}
-            {#            area: ['550px', '550px'],#}
-            {#            content: ['{% url 'users:bucket_bind_user' %}' + '?id=' + data.id, 'no'],#}
-            {#            end: function () {#}
-            {#                //关闭时做的事情#}
-            {#                oDataTable.ajax.reload();#}
-            {#                window.location.reload();#}
-            {#            }#}
-            {#        });#}
-            {#    }#}
-            {#});
-        #}
+        layui.use(['form'], function () {
+            var form = layui.form, layer = layui.layer;
+            form.on('submit(formSubmit)', function (data) {
+                // if (data.field['ssl'] === "on") {
+                //     data.field['ssl'] = Boolean(true);
+                // } else {
+                //     data.field['ssl'] = Boolean(false)
+                // }
+                {#layer.alert(JSON.stringify(data.field));#}
+                (data.field)['csrfmiddlewaretoken'] = "{{ csrf_token }}";
+                emailConfig(data.field);
+                {#layer.alert(JSON.stringify(data.field));#}
+            })
         })
-        ;
     </script>
+
+    <script>
+        // email 配置
+        function emailConfig(data) {
+            var url = "{% url 'users:email_config' %}";
+            $.post(url, data, function (result) {
+                if (result['status'] === "success") {
+                    layer.msg("修改成功");
+                } else {
+                    layer.alert("修改失败");
+                }
+            });
+        }
+
+        // 获取email的配置
+        $(function () {
+            var url = "{% url 'users:email_config' %}";
+            $.get(url, function (result) {
+                $("#L_email").val(result['email']);
+                $("#L_password").val(result['password']);
+                $("#L_server").val(result['server']);
+                $("#L_port").val(result['port']);
+                if (result['ssl']) {
+                    $("#radio1").attr("checked","checked");
+                    $("#radio2").removeAttr("checked");
+                } else {
+                    $("#radio2").attr("checked","checked");
+                    $("#radio1").removeAttr("checked");
+                }
+            })
+        })
+    </script>
+
 {% endblock %}

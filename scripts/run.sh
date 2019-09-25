@@ -32,6 +32,9 @@ nginx_conf() {
 start_django() {
     crond
 
+    # 关闭django DEBUG模式
+    sed -i 's/^DEBUG = True/DEBUG = False/g' ${WEB_DIR}/new_ssl_cert/settings.py
+
     # 数据迁移
     python3 manage.py makemigrations
     python3 manage.py migrate

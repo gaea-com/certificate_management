@@ -3,6 +3,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 # from .models import User
 from captcha.fields import CaptchaField
+from .models import EmailConfig
 
 User = get_user_model()
 
@@ -121,3 +122,9 @@ class PasswordChangeForm(forms.Form):
         confirm_password = cleaned_data.get("password2")
         if password != confirm_password:
             raise forms.ValidationError("两次密码输入不一致")
+
+
+class EmailConfigForm(forms.ModelForm):
+    class Meta:
+        model = EmailConfig
+        fields = ['email', 'password', 'server', 'port', 'ssl']

@@ -7,6 +7,7 @@ WORKDIR ${WEB_DIR}
 COPY requirements.txt ${WEB_DIR}/requirements.txt
 
 RUN set -ex \
+    && sed -i 's#http://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/apk/repositories \
     && apk update \
     && apk add --no-cache \
         bash \

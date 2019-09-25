@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, ActivateCode
+from .models import User, ActivateCode, EmailConfig
 
 
 # Register your models here.
@@ -16,6 +16,11 @@ class UserAdmin(admin.ModelAdmin):
 class ActivateCodeAdmin(admin.ModelAdmin):
     list_display = ("user", "code", "expire_time", "create_time", "update_time")
     search_fields = ('user',)
+
+
+@admin.register(EmailConfig)
+class EmailConfigAdmin(admin.ModelAdmin):
+    list_display = ("email", "password", "server", "port", "ssl")
 
 # admin.site.site_header = "SSL 证书管理后台登录"
 # admin.site.site_title = "SSL 证书管理"

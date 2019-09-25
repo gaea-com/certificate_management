@@ -8,18 +8,21 @@
 import logging
 import os
 import shutil
-from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from apps.ssl_cert.config import CERT_DIR
+from users.models import EmailConfig
 
 log = logging.getLogger("django")
+
+
+email_config = EmailConfig.objects.all()
 
 
 def send_email(subject: str, content: str, domain: str, to_email: list):
     subject = subject
     content = content
-    sender = settings.DEFAULT_FROM_EMAIL
-    to_email.append(settings.EMAIL_HOST_USER)
+    sender = email_config.values()[0]["email"]
+    # to_email.append(settings.EMAIL_HOST_USER)
     receiver = to_email
 
     msg = EmailMultiAlternatives(subject, content, sender, receiver)

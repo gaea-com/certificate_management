@@ -16,4 +16,6 @@ urlpatterns = [
     path('delete_user/', views.UserDeleteView.as_view(), name="delete_user"),
     path('user_bind_domain/', views.UserBindDomain.as_view(), name="user_bind_domain"),
     path('password_change/', views.PasswordChangeView.as_view(), name="password_change"),
+
+    path('email_config/', views.EmailConfigView.as_view(), name="email_config"),
 ]
