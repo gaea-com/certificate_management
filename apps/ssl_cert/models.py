@@ -63,7 +63,8 @@ class ToEmail(models.Model):
     接收证书的邮箱
     """
     email = models.EmailField(verbose_name="邮箱")
-    domain = models.ForeignKey("Domain", on_delete=models.CASCADE)
+    domain = models.ForeignKey("Domain", on_delete=models.CASCADE, blank=True, null=True)
+    custom_domain = models.ForeignKey("CustomDomain", on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return self.email
@@ -138,3 +139,20 @@ class SubSyncLimit(models.Model):
     class Meta:
         verbose_name = "子域名同步频率限制"
         verbose_name_plural = verbose_name
+
+
+class CustomDomain(models.Model):
+    """
+    自定义域名
+    """
+    domain = models.CharField(verbose_name="域名", max_length=50)
+    source_ip = models.GenericIPAddressField(verbose_name="源站IP")
+    start_date = models.DateTimeField(verbose_name='开始日期', blank=True, null=True)
+    expire_date = models.DateTimeField(verbose_name='过期日期', blank=True, null=True)
+
+    class Meta:
+        verbose_name = "自定义域名"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return F"{self.domain} -> {self.source_ip}"

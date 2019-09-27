@@ -7,13 +7,14 @@ django.setup()
 ######
 import logging
 from datetime import datetime, timedelta
-from ssl_cert.models import Domain
+from ssl_cert.models import Domain, CustomDomain
 from django.contrib.auth import get_user_model
 from res.custom_send_email import send_email
 from res.domain import VerifyHttps
 from res.domain import DomainClassify
 from res.email_table.ssl_expired_alarms_email_table import email_table
-from ssl_cert.to_email import to_email as to
+from res.email_table.custom_domain_ssl_expired_alarms import custom_domain_alarm_email
+from ssl_cert.to_email import to_email, custom_domain_to_email
 from res.utils.SLD import SLD
 from res.ssl_cert import SSLCert
 
@@ -32,6 +33,7 @@ def domain_filter(days):
 
 def auto_update_ssl_cert():
     """
+    执行计划 执行函数
     证书距离过期日期 小于等于 7天时，自动更新证书
     """
     days = 7
@@ -66,8 +68,8 @@ class SSLCertExpiredAlarms(object):
                 new_domain = "@." + obj.domain if sld.is_sld() else obj.domain  # 如果是个二级域名，在发送邮件时，前面加上@
                 email_content = email_table(new_domain, obj.dns, main_domain_result, https_sub_domain)
                 subject = F"{new_domain} SSL证书过期提醒"
-                to_email = to(obj.domain)
-                send_email(subject, email_content, obj.domain, to_email)
+                email = to_email(obj.domain)
+                send_email(subject, email_content, obj.domain, email)
 
     def main_domain(self, domain: str, source_ip: str = None):
         """
@@ -131,11 +133,39 @@ class SSLCertExpiredAlarms(object):
 
 def expired_alarms():
     """
+    执行计划 执行函数
     SSL证书过期提醒
     """
     alarms = SSLCertExpiredAlarms()
     alarms.alarms()
 
 
+def custom_domain_filter(days):
+    """
+    查询小于指定天数的自定义域名
+    """
+    filter_time = datetime.now() + timedelta(days=days)
+    queryset = CustomDomain.objects.filter(expire_date__lte=filter_time)
+    return queryset
+
+
+def custom_domain_expired_alarms():
+    """
+    执行计划 执行函数
+    自定义域名SSL证书过期提醒
+    """
+    days = 5
+    queryset = custom_domain_filter(days)
+    log.info(F"custom domain expire alarms: {queryset.values()}")
+    for obj in queryset:
+        custom_domain = obj.domain
+        expire_date = obj.expire_date
+        content = custom_domain_alarm_email(custom_domain, expire_date)
+        subject = F"{custom_domain} SSL证书过期提醒"
+        email = custom_domain_to_email(custom_domain)
+        send_email(subject, content, custom_domain, email)
+
+
 if __name__ == '__main__':
-    expired_alarms()
+    # expired_alarms()
+    custom_domain_expired_alarms()

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import custom_domain_menu_views
 
 app_name = 'ssl_cert'
 urlpatterns = [
@@ -24,4 +25,12 @@ urlpatterns = [
     path('delete_record/', views.DeleteRecordView.as_view(), name="delete_record"),
 
     path('check_domain_status/', views.CheckDomainStatusView.as_view(), name="check_domain_status"),
+
+    path('custom_domain/', custom_domain_menu_views.CustomDomainViews.as_view(), name="custom_domain"),
+    path('custom_domain_list/', custom_domain_menu_views.custom_domain_list, name="custom_domain_list"),
+    path('add_custom_domain/', custom_domain_menu_views.AddCustomDomainView.as_view(), name="add_custom_domain"),
+    path('delete_custom_domain/', custom_domain_menu_views.DeleteCustomDomainView.as_view(),
+         name="delete_custom_domain"),
+    path('to_email_custom_domain/', custom_domain_menu_views.CustomDomainToEmailView.as_view(),
+         name="to_email_custom_domain"),
 ]

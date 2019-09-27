@@ -1,0 +1,110 @@
+{% extends 'base-layer.html' %}
+
+{% load static %}
+
+{% block main %}
+
+    <div class="layui-container fly-marginTop">
+        <div class="layui-row">
+
+            <form class="layui-form" method="post" id="addCustomDomainForm">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">自定义域名</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="custom_domain" lay-verify="required|customDomain" lay-reqtext="请输入域名"
+                               placeholder=""
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+
+                <div class="layui-form-item">
+                    <label class="layui-form-label">源站IP</label>
+                    <div class="layui-input-block" style="width: 70%">
+                        <input type="text" name="ip" lay-verify="required|IP" lay-reqtext="请输入源站IP" placeholder=""
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+
+
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button type="button" class="layui-btn" lay-submit="" lay-filter="formSubmit">提交
+                        </button>
+                        <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        //验证URL
+        function checkUrl(str) {
+            var RegUrl = new RegExp();
+            RegUrl.compile("^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$");    //jihua.cnblogs.com
+            if (!RegUrl.test(str)) {
+                return false;
+            }
+            return true;
+        }
+    </script>
+
+    <script>
+        layui.use(['form', 'layedit', 'laydate'], function () {
+            var form = layui.form
+                , layer = layui.layer;
+
+            form.verify({
+                // 验证域名
+                customDomain: function (value) {
+                    if (!checkUrl(value)) {
+                        return "域名格式不正确"
+                    }
+                },
+                // 验证IP
+                IP: [
+                    /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/
+                    , 'IP地址不符合规则'
+                ]
+            });
+
+            //监听提交
+            form.on('submit(formSubmit)', function (data) {
+                {#layer.alert(JSON.stringify(data.field), {#}
+                {#        title: '最终的提交信息'#}
+                {#    }#}
+                {#);#}
+                (data.field)['csrfmiddlewaretoken'] = "{{ csrf_token }}";
+                (data.field)['domain'] = $("input").val();
+                addCustomdomain(data.field);
+            });
+        });
+    </script>
+
+    <script>
+        // 添加记录
+        function addCustomdomain(data) {
+            layer.load(0, {shade: false}); // loading 加载层, 0代表加载的风格，支持0-2
+            var url = "{% url 'ssl_cert:add_custom_domain' %}";
+            $.post(url, data, function (result) {
+                layer.closeAll('loading');  // 关闭loading 加载层
+                if (result["status"] === "success") {
+                    layer.alert("自定义域名添加成功", {
+                        end: function () {
+                            parent.layer.closeAll();// 关闭所有弹窗
+                        }
+                    });
+                } else if (result["status"] === "failed") {
+                    layer.alert("添加自定义域名失败: " + result["message"], {icon: 2,});
+                } else {
+                    {#layer.msg(result["msg"], {offset: 't'});#}
+                    layer.alert("添加自定义域名失败", {icon: 2,});
+                }
+            })
+        }
+    </script>
+{% endblock %}

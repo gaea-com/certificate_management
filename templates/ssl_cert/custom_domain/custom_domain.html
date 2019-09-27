@@ -1,0 +1,178 @@
+{% extends 'base-menu.html' %}
+
+{% load static %}
+
+
+{% block content %}
+    <div class="layui-container">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md12">
+                <div class="fly-panel" style="min-height: 600px">
+                    <div class="fly-panel-title">
+                        <h3 style="display: inline"><strong>自定义域名列表</strong></h3>
+
+                        {#                        <div class="searchTable layui-inline" style="float: right">#}
+                        {#                            <div class="layui-inline">#}
+                        {#                                <input class="layui-input" name="id" id="tableReload" autocomplete="off"#}
+                        {#                                       placeholder="域名">#}
+                        {#                            </div>#}
+                        {#                            <button class="layui-btn" data-type="reload">搜索</button>#}
+                        {#                        </div>#}
+                    </div>
+
+                    <div class="fly-panel-main">
+                        <div class="layui-btn-group">
+                            <button type="button" class="layui-btn layui-btn-sm" id="addCustomDomain"><i
+                                    class="layui-icon">&#xe654;</i>添加域名
+                            </button>
+                        </div>
+
+                        <table class="layui-hide" id="customDomainTable" lay-filter="customDomainFilter"></table>
+                        <script type="text/html" id="customDomainBar">
+                            <a class="layui-btn layui-btn-xs" lay-event="to_email">通知邮箱</a>
+                            <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>
+                        </script>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script src="{% static 'js/plugins/moment.js' %}"></script>
+
+    <script>
+        $("#customDomainMenuIndex").addClass("layui-this");
+    </script>
+
+    <script>
+        layui.use(['table'], function () {
+            var table = layui.table;
+            table.render({
+                elem: '#customDomainTable'
+                , url: "{% url 'ssl_cert:custom_domain_list' %}"
+                , cols: [[
+                    {width: 60, title: '序号', align: 'center', type: "numbers"}
+                    , {field: 'domain', title: '自定义域名', align: 'center'}
+                    , {field: 'source_ip', title: '源站IP', align: 'center'}
+                    , {
+                        field: 'start_date', title: '开始日期', align: 'center', templet: function (d) {
+                            return moment(d.start_date).format('YYYY-MM-DD')
+                        }
+                    }
+                    , {
+                        field: 'expire_date', title: '过期日期', align: 'center', templet: function (d) {
+                            return moment(d.expire_date).format('YYYY-MM-DD')
+                        }
+                    }
+                    , {
+                        field: '天数', title: '剩余/天', width: 80, align: 'center', templet: function (d) {
+                            var nowTime = moment();
+                            var expireTime = moment(d.expire_date);
+                            var days_ = expireTime.diff(nowTime, 'days');
+                            return days_ + " 天"
+                        }
+                    }
+                    , {field: '操作', title: '操作', align: 'center', toolbar: '#customDomainBar'}
+                ]]
+                , page: true
+            });
+
+            // 监控按钮
+            table.on('tool(customDomainFilter)', function (obj) {
+                var data = obj.data;
+                var custom_domain = data.domain;
+                {#layer.alert(JSON.stringify(data));#}
+                if (obj.event === "del") {                      // 删除按钮
+                    deleteCustomDomain(custom_domain);
+                } else if (obj.event === "to_email") {          // 接收邮箱
+                    toEmail(custom_domain);
+                }
+            });
+        });
+    </script>
+
+    <script>
+        // getCookie函数
+        function getCookie(name) {
+            var arr, reg = new RegExp("(^| )" + name + "=([^;]*)(;|$)");
+            if (arr = document.cookie.match(reg))
+                return unescape(arr[2]);
+            else
+                return null;
+        }
+
+        // DELETE请求需要把csrf设置在header中
+        $(function () {
+            $.ajaxSetup({
+                headers: {"X-CSRFToken": getCookie("csrftoken")}
+            });
+        });
+    </script>
+
+    <script>
+        // 添加自定义域名
+        $("#addCustomDomain").click(function () {
+            layer.open({
+                type: 2,
+                title: '添加自定义域名',
+                shadeClose: true,
+                maxmin: true,
+                area: ['550px', '250px'],
+                content: ["{% url 'ssl_cert:add_custom_domain' %}"],
+                end: function () {
+                    window.location.reload();
+                }
+            })
+        });
+
+        // 删除自定义域名
+        function deleteCustomDomain(custom_domain) {
+            var url = "{% url 'ssl_cert:delete_custom_domain' %}";
+            var data = {
+                "custom_domain": custom_domain,
+            };
+
+            layer.confirm("确定删除吗？", function () {
+                // DELETE请求，需要把csrf设置为header中
+                $.ajax({
+                    url: url,
+                    type: "DELETE",
+                    dataType: "json",
+                    data: data,
+                    success: function (result) {
+                        if (result["status"] === "success") {
+                            layer.msg("删除成功", {
+                                time: 2000,
+                                end: function () {
+                                    location.reload();
+                                }
+                            })
+                        } else {
+                            layer.alert("删除失败", {icon: 5});
+                        }
+                    },
+                    error: function (data, textStatus, errorThrown) {
+                        {#console.log(data);#}
+                        console.log("删除自定义域名异常: " + textStatus + " : " + errorThrown);
+                        alert("删除自定义域名异常");
+                    }
+                })
+            });
+        }
+
+        // 接收邮箱
+        function toEmail(domain) {
+            layer.open({
+                type: 2,
+                title: '接收通知邮箱',
+                shadeClose: true,
+                maxmin: true,
+                area: ['550px', '350px'],
+                content: ["{% url 'ssl_cert:to_email_custom_domain' %}?domain=" + domain],
+            })
+        }
+    </script>
+{% endblock %}

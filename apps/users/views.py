@@ -372,7 +372,12 @@ class EmailConfigView(LoginRequiredMixin, View):
 
     def get(self, request):
         email_config = EmailConfig.objects.all()
-        return JsonResponse(email_config.values()[0])
+        log.info(F"email config: {email_config.values()}")
+        if email_config:
+            result = email_config.values()[0]
+        else:
+            result = dict()
+        return JsonResponse(result)
 
     def post(self, request):
         data = request.POST.copy()

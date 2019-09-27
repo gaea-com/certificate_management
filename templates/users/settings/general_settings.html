@@ -17,14 +17,14 @@
                             <label for="L_email" class="layui-form-label">邮箱</label>
                             <div class="layui-input-inline">
                                 <input type="text" id="L_email" name="email" required lay-verify="email"
-                                       autocomplete="off" value="" class="layui-input">
+                                       autocomplete="new-email" value="" class="layui-input">
                             </div>
                         </div>
                         <div class="layui-form-item">
                             <label for="L_nowpass" class="layui-form-label">密码</label>
                             <div class="layui-input-inline">
                                 <input type="password" id="L_password" name="password" required lay-verify="required"
-                                       autocomplete="off" class="layui-input">
+                                       autocomplete="new-password" class="layui-input">
                             </div>
                         </div>
                         <div class="layui-form-item">
@@ -103,16 +103,16 @@
         // 获取email的配置
         $(function () {
             var url = "{% url 'users:email_config' %}";
-            $.get(url, function (result) {
+            $.get(url, {}, function (result) {
                 $("#L_email").val(result['email']);
                 $("#L_password").val(result['password']);
                 $("#L_server").val(result['server']);
                 $("#L_port").val(result['port']);
                 if (result['ssl']) {
-                    $("#radio1").attr("checked","checked");
+                    $("#radio1").attr("checked", "checked");
                     $("#radio2").removeAttr("checked");
                 } else {
-                    $("#radio2").attr("checked","checked");
+                    $("#radio2").attr("checked", "checked");
                     $("#radio1").removeAttr("checked");
                 }
             })

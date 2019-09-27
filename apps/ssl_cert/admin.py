@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Domain, SSLCertContent, SubDomains, SubSyncLimit, ToEmail
+from .models import Domain, SSLCertContent, SubDomains, SubSyncLimit, ToEmail, CustomDomain
 
 
 # Register your models here.
@@ -37,5 +37,11 @@ class SubSyncLimitAdmin(admin.ModelAdmin):
 
 @admin.register(ToEmail)
 class ToEmailAdmin(admin.ModelAdmin):
-    list_display = ("id", "email", "domain",)
+    list_display = ("id", "email", "domain", "custom_domain")
     search_fields = ("email", "domain__domain",)
+
+
+@admin.register(CustomDomain)
+class CustomDomainAdmin(admin.ModelAdmin):
+    list_display = ("id", "domain", "source_ip", "start_date", "expire_date")
+    search_fields = ("domain", "source_ip")

@@ -8,10 +8,12 @@
         <div class="layui-container">
             <ul class="layui-nav layui-clear" lay-filter="" style="background-color: white; padding-left: 0px">
                 <li class="layui-nav-item" id="menuIndex"><a href="{% url 'index' %}" style="color: black">首页</a></li>
+
+                <li class="layui-nav-item" id="customDomainMenuIndex"><a href="{% url 'ssl_cert:custom_domain' %}" style="color: black">自定义域名</a></li>
 {#                <li class="layui-nav-item" style="margin-left: 10px" id="menuSSL">#}
 {#                    <a href="javascript:;" style="color: black;">证书</a>#}
 {#                    <dl class="layui-nav-child"> <!-- 二级菜单 -->#}
-{#                        <dd id="menuCreateSslCert"><a href="{% url 'ssl_cert:create_ssl_cert' %}">创建证书</a></dd>#}
+{#                        <dd id="menuCreateSslCert"><a href="#">创建证书</a></dd>#}
 {#                        <dd><a href="">批量创建证书</a></dd>#}
 {#                        <dd><a href="">上传证书</a></dd>#}
 {#                    </dl>#}
@@ -23,6 +25,9 @@
 {#                        <dd><a href="">添加解析记录</a></dd>#}
 {#                    </dl>#}
 {#                </li>#}
+
+
+
             </ul>
         </div>
     </div>
