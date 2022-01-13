@@ -14,7 +14,7 @@ dnspython==1.16.0
 idna==2.8
 jmespath==0.9.4
 mysqlclient==1.4.4
-Pillow==6.1.0
+Pillow==9.0.0
 pycparser==2.19
 pycryptodome==3.8.2
 pyOpenSSL==19.0.0
