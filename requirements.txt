@@ -2,7 +2,7 @@ aliyun-python-sdk-alidns==2.0.10
 aliyun-python-sdk-core==2.13.5
 aliyun-python-sdk-core-v3==2.13.3
 asn1crypto==0.24.0
-certifi==2019.6.16
+certifi==2022.12.7
 cffi==1.12.3
 chardet==3.0.4
 cryptography==2.7
